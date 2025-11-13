@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { TerminalSquare } from "lucide-react";
+import { TerminalSquare, UserCircle } from "lucide-react";
 
 import { tools } from "@/config/tools";
 import {
@@ -16,10 +16,19 @@ import {
   SidebarMenuButton,
   SidebarInset,
   SidebarTrigger,
+  SidebarFooter,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  
+  const isAuthPage = pathname === '/login' || pathname === '/signup';
+
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
+
 
   return (
     <SidebarProvider>
@@ -53,6 +62,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             ))}
           </SidebarMenu>
         </SidebarContent>
+        <SidebarFooter>
+            <SidebarSeparator />
+             <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={{
+                        children: "Profile",
+                        className: "bg-card border-border text-foreground font-semibold"
+                      }}
+                    >
+                      <Link href="/login">
+                        <UserCircle />
+                        <span>Profile</span>
+                      </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+             </SidebarMenu>
+        </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="flex h-12 items-center border-b px-4 md:hidden">

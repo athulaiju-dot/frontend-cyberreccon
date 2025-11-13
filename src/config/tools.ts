@@ -6,6 +6,7 @@ import {
   Network,
   Mail,
   type LucideIcon,
+  Fingerprint,
 } from "lucide-react";
 
 export interface Tool {
