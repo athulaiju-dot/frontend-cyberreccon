@@ -19,15 +19,18 @@ export default function PhoneValidatorPage() {
 
     setLoading(true);
     setResults(null);
-    // Simulate API call
+    // Simulate API call based on the python script's output
     await new Promise(resolve => setTimeout(resolve, 1500));
     setResults({
-      "Phone Number": phone,
-      "Is Valid": true,
-      "International Format": `+1 ${phone.slice(0, 3)}-${phone.slice(3, 6)}-${phone.slice(6)}`,
-      "Country": "USA",
-      "Carrier": "Verizon Wireless",
-      "Line Type": "Mobile",
+      "input": phone,
+      "e164": "+15551234567",
+      "international": "+1 555-123-4567",
+      "national": "(555) 123-4567",
+      "valid": true,
+      "possible": true,
+      "country": "United States",
+      "carrier": "T-Mobile",
+      "type": "MOBILE",
     });
     setLoading(false);
   };
@@ -49,7 +52,7 @@ export default function PhoneValidatorPage() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g., 5551234567"
+                placeholder="e.g., +15551234567"
                 className="flex-grow"
                 aria-label="Phone Number"
               />
