@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ResultsDisplay } from "@/components/ResultsDisplay";
+import { locateIp, type IpLookupResult } from "./actions";
+import { useToast } from "@/hooks/use-toast";
 
 interface Geolocation {
   lat?: number;
@@ -16,8 +18,9 @@ interface Geolocation {
 export default function IpLocatorPage() {
   const [ipAddress, setIpAddress] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<object | null>(null);
+  const [results, setResults] = useState<IpLookupResult | null>(null);
   const [geolocation, setGeolocation] = useState<Geolocation | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,30 +30,21 @@ export default function IpLocatorPage() {
     setResults(null);
     setGeolocation(null);
 
-    // Simulate API call based on the python script's output
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const apiResponse = {
-      "query": ipAddress,
-      "status": "success",
-      "country": "United States",
-      "countryCode": "US",
-      "region": "CA",
-      "regionName": "California",
-      "city": "Mountain View",
-      "zip": "94043",
-      "lat": 37.422,
-      "lon": -122.084,
-      "timezone": "America/Los_Angeles",
-      "isp": "Google LLC",
-      "org": "Google LLC",
-      "as": "AS15169 Google LLC"
-    };
+    const apiResponse = await locateIp(ipAddress);
 
-    setResults(apiResponse);
-    if (apiResponse.lat && apiResponse.lon) {
-      setGeolocation({ lat: apiResponse.lat, lon: apiResponse.lon });
+    if (apiResponse.status === 'success') {
+        setResults(apiResponse);
+        if (apiResponse.lat && apiResponse.lon) {
+          setGeolocation({ lat: apiResponse.lat, lon: apiResponse.lon });
+        }
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Lookup Failed",
+            description: apiResponse.message || "Could not retrieve information for the given IP or domain.",
+        });
     }
+
     setLoading(false);
   };
 
@@ -70,7 +64,7 @@ export default function IpLocatorPage() {
       <div className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>Enter IP Address</CardTitle>
+            <CardTitle>Enter IP Address or Domain</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4">
@@ -78,9 +72,9 @@ export default function IpLocatorPage() {
                 type="text"
                 value={ipAddress}
                 onChange={(e) => setIpAddress(e.target.value)}
-                placeholder="e.g., 8.8.8.8"
+                placeholder="e.g., 8.8.8.8 or example.com"
                 className="flex-grow"
-                aria-label="IP Address"
+                aria-label="IP Address or Domain"
               />
               <Button type="submit" disabled={loading || !ipAddress} className="w-full sm:w-auto">
                 {loading ? (
