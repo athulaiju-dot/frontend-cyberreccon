@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ResultsDisplay } from "@/components/ResultsDisplay";
 import Image from "next/image";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 const FileUploader = ({ onFileSelect, selectedFile, disabled }: { onFileSelect: (file: File) => void, selectedFile: File | null, disabled: boolean }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,44 +63,46 @@ export default function ReverseImageSearchPage() {
   };
   
   return (
-    <ToolPageWrapper
-      title="Reverse Image Search"
-      description="Find the source and similar images across the web."
-      icon={ImageIcon}
-    >
-      <div className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Upload Image</CardTitle>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent>
-              <FileUploader onFileSelect={setImageFile} selectedFile={imageFile} disabled={loading} />
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={loading || !imageFile} className="w-full sm:w-auto ml-auto">
-                {loading ? (
-                  <LoaderCircle className="animate-spin" />
-                ) : (
-                  <ImageIcon className="mr-2" />
-                )}
-                Search
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+    <AppLayout>
+      <ToolPageWrapper
+        title="Reverse Image Search"
+        description="Find the source and similar images across the web."
+        icon={ImageIcon}
+      >
+        <div className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Upload Image</CardTitle>
+            </CardHeader>
+            <form onSubmit={handleSubmit}>
+              <CardContent>
+                <FileUploader onFileSelect={setImageFile} selectedFile={imageFile} disabled={loading} />
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" disabled={loading || !imageFile} className="w-full sm:w-auto ml-auto">
+                  {loading ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <ImageIcon className="mr-2" />
+                  )}
+                  Search
+                </Button>
+              </CardFooter>
+            </form>
+          </Card>
 
-        {loading && (
-          <div className="flex justify-center items-center gap-2 text-muted-foreground">
-            <LoaderCircle className="animate-spin text-primary" />
-            <span>Analyzing image pixels...</span>
-          </div>
-        )}
-        
-        {results && <ResultsDisplay results={results} />}
+          {loading && (
+            <div className="flex justify-center items-center gap-2 text-muted-foreground">
+              <LoaderCircle className="animate-spin text-primary" />
+              <span>Analyzing image pixels...</span>
+            </div>
+          )}
+          
+          {results && <ResultsDisplay results={results} />}
 
-      </div>
-    </ToolPageWrapper>
+        </div>
+      </ToolPageWrapper>
+    </AppLayout>
   );
 }
 

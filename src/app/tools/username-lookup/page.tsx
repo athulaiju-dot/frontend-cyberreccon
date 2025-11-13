@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { searchUsernames, type UsernameSearchResults } from "./actions";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 type Results = UsernameSearchResults;
 
@@ -103,128 +104,130 @@ export default function UsernameLookupPage() {
   const selectedCount = Object.values(selectedPlatforms).filter(Boolean).length;
 
   return (
-    <ToolPageWrapper
-      title="Username Lookup"
-      description="Find social media profiles and online accounts by username."
-      icon={UserSearch}
-    >
-      <div className="space-y-8">
-        <Card>
-          <form onSubmit={handleSubmit}>
-            <CardHeader>
-              <CardTitle>Enter Username</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <Input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="e.g., niazahamed"
-                  className="flex-grow"
-                  aria-label="Username"
-                />
-                <Button type="submit" disabled={loading || !username} className="w-full sm:w-auto">
-                  {loading ? (
-                    <LoaderCircle className="animate-spin" />
-                  ) : (
-                    <UserSearch className="mr-2" />
-                  )}
-                  Search
-                </Button>
-              </div>
-
-              <Collapsible open={isPlatformsOpen} onOpenChange={setIsPlatformsOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between">
-                    <span>Select Platforms ({selectedCount} / {ALL_PLATFORMS.length})</span>
-                    <ChevronDown className={`transform transition-transform ${isPlatformsOpen ? 'rotate-180' : ''}`} />
+    <AppLayout>
+      <ToolPageWrapper
+        title="Username Lookup"
+        description="Find social media profiles and online accounts by username."
+        icon={UserSearch}
+      >
+        <div className="space-y-8">
+          <Card>
+            <form onSubmit={handleSubmit}>
+              <CardHeader>
+                <CardTitle>Enter Username</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <Input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="e.g., niazahamed"
+                    className="flex-grow"
+                    aria-label="Username"
+                  />
+                  <Button type="submit" disabled={loading || !username} className="w-full sm:w-auto">
+                    {loading ? (
+                      <LoaderCircle className="animate-spin" />
+                    ) : (
+                      <UserSearch className="mr-2" />
+                    )}
+                    Search
                   </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-4 pt-4">
-                   <div className="flex items-center gap-4">
-                      <Button variant="ghost" size="sm" onClick={handleSelectAll}>Select All</Button>
-                      <Button variant="ghost" size="sm" onClick={handleDeselectAll}>Deselect All</Button>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {ALL_PLATFORMS.map(platform => (
-                      <div key={platform} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={platform}
-                          checked={selectedPlatforms[platform]}
-                          onCheckedChange={() => handlePlatformChange(platform)}
-                        />
-                        <Label htmlFor={platform} className="font-medium cursor-pointer">
-                          {platform}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+                </div>
 
-            </CardContent>
-          </form>
-        </Card>
-
-        {loading && (
-          <div className="flex justify-center items-center gap-2 text-muted-foreground">
-            <LoaderCircle className="animate-spin text-primary" />
-            <span>Scanning the digital universe...</span>
-          </div>
-        )}
-
-        {results && (
-          <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-            <CardHeader>
-              <CardTitle className="font-headline text-primary">Investigation Results for "{username}"</CardTitle>
-            </CardHeader>
-            <CardContent>
-               {Object.keys(results).length > 0 ? (
-                <Accordion type="multiple" defaultValue={Object.keys(results).filter(p => results[p].found.length > 0 || results[p].discovered.length > 0)} className="w-full">
-                  {Object.entries(results).map(([platform, data]) => (
-                    (data.found.length > 0 || data.discovered.length > 0) && (
-                      <AccordionItem value={platform} key={platform}>
-                        <AccordionTrigger className="font-headline text-lg hover:no-underline">
-                          <div className="flex items-center gap-3">
+                <Collapsible open={isPlatformsOpen} onOpenChange={setIsPlatformsOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span>Select Platforms ({selectedCount} / {ALL_PLATFORMS.length})</span>
+                      <ChevronDown className={`transform transition-transform ${isPlatformsOpen ? 'rotate-180' : ''}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 pt-4">
+                     <div className="flex items-center gap-4">
+                        <Button variant="ghost" size="sm" onClick={handleSelectAll}>Select All</Button>
+                        <Button variant="ghost" size="sm" onClick={handleDeselectAll}>Deselect All</Button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {ALL_PLATFORMS.map(platform => (
+                        <div key={platform} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={platform}
+                            checked={selectedPlatforms[platform]}
+                            onCheckedChange={() => handlePlatformChange(platform)}
+                          />
+                          <Label htmlFor={platform} className="font-medium cursor-pointer">
                             {platform}
-                            <Badge variant="secondary">{data.found.length} Found</Badge>
-                            <Badge variant="outline">{data.discovered.length} Discovered</Badge>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-2 space-y-3">
-                          {data.found.length > 0 && (
-                            <div>
-                              <h4 className="font-semibold text-primary mb-2">Found Accounts</h4>
-                              <div className="flex flex-col gap-1">
-                                {data.found.map(item => (
-                                  <ResultItem key={item.url} label={item.username} value={item.url} isUrl />
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {data.discovered.length > 0 && (
-                            <div>
-                               <h4 className="font-semibold text-accent mb-2">Discovered Usernames</h4>
-                               <div className="flex flex-wrap gap-2">
-                                  {data.discovered.map(name => (
-                                    <Badge key={name} variant="outline" className="font-mono bg-background/50">{name}</Badge>
-                                  ))}
-                               </div>
-                            </div>
-                          )}
-                        </AccordionContent>
-                      </AccordionItem>
-                    )
-                  ))}
-                </Accordion>
-              ) : (
-                <p className="text-muted-foreground text-center">No accounts found for the selected platforms.</p>
-              )}
-            </CardContent>
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+              </CardContent>
+            </form>
           </Card>
-        )}
-      </div>
-    </ToolPageWrapper>
+
+          {loading && (
+            <div className="flex justify-center items-center gap-2 text-muted-foreground">
+              <LoaderCircle className="animate-spin text-primary" />
+              <span>Scanning the digital universe...</span>
+            </div>
+          )}
+
+          {results && (
+            <Card className="bg-card/50 backdrop-blur-sm border-border/50">
+              <CardHeader>
+                <CardTitle className="font-headline text-primary">Investigation Results for "{username}"</CardTitle>
+              </CardHeader>
+              <CardContent>
+                 {Object.keys(results).length > 0 ? (
+                  <Accordion type="multiple" defaultValue={Object.keys(results).filter(p => results[p].found.length > 0 || results[p].discovered.length > 0)} className="w-full">
+                    {Object.entries(results).map(([platform, data]) => (
+                      (data.found.length > 0 || data.discovered.length > 0) && (
+                        <AccordionItem value={platform} key={platform}>
+                          <AccordionTrigger className="font-headline text-lg hover:no-underline">
+                            <div className="flex items-center gap-3">
+                              {platform}
+                              <Badge variant="secondary">{data.found.length} Found</Badge>
+                              <Badge variant="outline">{data.discovered.length} Discovered</Badge>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="pt-2 space-y-3">
+                            {data.found.length > 0 && (
+                              <div>
+                                <h4 className="font-semibold text-primary mb-2">Found Accounts</h4>
+                                <div className="flex flex-col gap-1">
+                                  {data.found.map(item => (
+                                    <ResultItem key={item.url} label={item.username} value={item.url} isUrl />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {data.discovered.length > 0 && (
+                              <div>
+                                 <h4 className="font-semibold text-accent mb-2">Discovered Usernames</h4>
+                                 <div className="flex flex-wrap gap-2">
+                                    {data.discovered.map(name => (
+                                      <Badge key={name} variant="outline" className="font-mono bg-background/50">{name}</Badge>
+                                    ))}
+                                 </div>
+                              </div>
+                            )}
+                          </AccordionContent>
+                        </AccordionItem>
+                      )
+                    ))}
+                  </Accordion>
+                ) : (
+                  <p className="text-muted-foreground text-center">No accounts found for the selected platforms.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </ToolPageWrapper>
+    </AppLayout>
   );
 }

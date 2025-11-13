@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResultsDisplay } from "@/components/ResultsDisplay";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 export default function DomainLookupPage() {
   const [domain, setDomain] = useState("");
@@ -38,47 +39,49 @@ export default function DomainLookupPage() {
   };
 
   return (
-    <ToolPageWrapper
-      title="Domain Lookup"
-      description="Retrieve WHOIS, DNS, and other records for a domain."
-      icon={Network}
-    >
-      <div className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Enter Domain Name</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4">
-              <Input
-                type="text"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                placeholder="e.g., example.com"
-                className="flex-grow"
-                aria-label="Domain Name"
-              />
-              <Button type="submit" disabled={loading || !domain} className="w-full sm:w-auto">
-                {loading ? (
-                  <LoaderCircle className="animate-spin" />
-                ) : (
-                  <Network className="mr-2" />
-                )}
-                Lookup
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+    <AppLayout>
+      <ToolPageWrapper
+        title="Domain Lookup"
+        description="Retrieve WHOIS, DNS, and other records for a domain."
+        icon={Network}
+      >
+        <div className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Enter Domain Name</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4">
+                <Input
+                  type="text"
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value)}
+                  placeholder="e.g., example.com"
+                  className="flex-grow"
+                  aria-label="Domain Name"
+                />
+                <Button type="submit" disabled={loading || !domain} className="w-full sm:w-auto">
+                  {loading ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <Network className="mr-2" />
+                  )}
+                  Lookup
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
 
-        {loading && (
-          <div className="flex justify-center items-center gap-2 text-muted-foreground">
-            <LoaderCircle className="animate-spin text-primary" />
-            <span>Querying global DNS servers...</span>
-          </div>
-        )}
+          {loading && (
+            <div className="flex justify-center items-center gap-2 text-muted-foreground">
+              <LoaderCircle className="animate-spin text-primary" />
+              <span>Querying global DNS servers...</span>
+            </div>
+          )}
 
-        {results && <ResultsDisplay results={results} />}
-      </div>
-    </ToolPageWrapper>
+          {results && <ResultsDisplay results={results} />}
+        </div>
+      </ToolPageWrapper>
+    </AppLayout>
   );
 }

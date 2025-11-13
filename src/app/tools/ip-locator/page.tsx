@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { ResultsDisplay } from "@/components/ResultsDisplay";
 import { locateIp, type IpLookupResult } from "./actions";
 import { useToast } from "@/hooks/use-toast";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 interface Geolocation {
   lat?: number;
@@ -56,64 +57,66 @@ export default function IpLocatorPage() {
   };
 
   return (
-    <ToolPageWrapper
-      title="IP Locator"
-      description="Trace an IP address to its geographic location."
-      icon={Globe}
-    >
-      <div className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Enter IP Address or Domain</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4">
-              <Input
-                type="text"
-                value={ipAddress}
-                onChange={(e) => setIpAddress(e.target.value)}
-                placeholder="e.g., 8.8.8.8 or example.com"
-                className="flex-grow"
-                aria-label="IP Address or Domain"
-              />
-              <Button type="submit" disabled={loading || !ipAddress} className="w-full sm:w-auto">
-                {loading ? (
-                  <LoaderCircle className="animate-spin" />
-                ) : (
-                  <Globe className="mr-2" />
-                )}
-                Locate
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {loading && (
-          <div className="flex justify-center items-center gap-2 text-muted-foreground">
-            <LoaderCircle className="animate-spin text-primary" />
-            <span>Triangulating position...</span>
-          </div>
-        )}
-
-        {results && (
+    <AppLayout>
+      <ToolPageWrapper
+        title="IP Locator"
+        description="Trace an IP address to its geographic location."
+        icon={Globe}
+      >
+        <div className="space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle className="font-headline text-primary">Investigation Results</CardTitle>
+              <CardTitle>Enter IP Address or Domain</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResultsDisplay results={results} />
-            </CardContent>
-            {geolocation && (
-              <CardFooter>
-                <Button onClick={openMap} variant="outline" className="w-full sm:w-auto ml-auto">
-                  <MapPin className="mr-2" />
-                  Open in Map
+              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4">
+                <Input
+                  type="text"
+                  value={ipAddress}
+                  onChange={(e) => setIpAddress(e.target.value)}
+                  placeholder="e.g., 8.8.8.8 or example.com"
+                  className="flex-grow"
+                  aria-label="IP Address or Domain"
+                />
+                <Button type="submit" disabled={loading || !ipAddress} className="w-full sm:w-auto">
+                  {loading ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <Globe className="mr-2" />
+                  )}
+                  Locate
                 </Button>
-              </CardFooter>
-            )}
+              </form>
+            </CardContent>
           </Card>
-        )}
-      </div>
-    </ToolPageWrapper>
+
+          {loading && (
+            <div className="flex justify-center items-center gap-2 text-muted-foreground">
+              <LoaderCircle className="animate-spin text-primary" />
+              <span>Triangulating position...</span>
+            </div>
+          )}
+
+          {results && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-headline text-primary">Investigation Results</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResultsDisplay results={results} />
+              </CardContent>
+              {geolocation && (
+                <CardFooter>
+                  <Button onClick={openMap} variant="outline" className="w-full sm:w-auto ml-auto">
+                    <MapPin className="mr-2" />
+                    Open in Map
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+          )}
+        </div>
+      </ToolPageWrapper>
+    </AppLayout>
   );
 }

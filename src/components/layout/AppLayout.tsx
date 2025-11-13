@@ -19,9 +19,11 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isMobile = useIsMobile();
   
   const isAuthPage = pathname === '/login' || pathname === '/signup';
 
@@ -34,7 +36,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <Sidebar collapsible="icon">
+      <Sidebar collapsible={isMobile ? "offcanvas" : "icon"}>
         <SidebarHeader 
             className="bg-cover bg-center relative"
             style={{ backgroundImage: `url(${imageUrl})` }}
