@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
   title: 'CyberTrace Toolkit',
@@ -23,6 +24,7 @@ export default function RootLayout({
         <AppLayout>
           {children}
         </AppLayout>
+        <Toaster />
       </body>
     </html>
   );
