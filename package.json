@@ -54,7 +54,8 @@
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.24.2",
-    "cheerio": "^1.0.0-rc.12"
+    "cheerio": "^1.0.0-rc.12",
+    "libphonenumber-js": "^1.11.4"
   },
   "devDependencies": {
     "@types/node": "^20",

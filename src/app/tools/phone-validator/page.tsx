@@ -7,11 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResultsDisplay } from "@/components/ResultsDisplay";
+import { validatePhone, type PhoneValidationResult } from "./actions";
+import { useToast } from "@/hooks/use-toast";
+
 
 export default function PhoneValidatorPage() {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<object | null>(null);
+  const [results, setResults] = useState<PhoneValidationResult | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,19 +23,19 @@ export default function PhoneValidatorPage() {
 
     setLoading(true);
     setResults(null);
-    // Simulate API call based on the python script's output
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setResults({
-      "input": phone,
-      "e164": "+15551234567",
-      "international": "+1 555-123-4567",
-      "national": "(555) 123-4567",
-      "valid": true,
-      "possible": true,
-      "country": "United States",
-      "carrier": "T-Mobile",
-      "type": "MOBILE",
-    });
+    
+    const validationResult = await validatePhone(phone);
+    
+    if (validationResult.error) {
+       toast({
+            variant: "destructive",
+            title: "Validation Failed",
+            description: validationResult.error,
+        });
+    } else {
+        setResults(validationResult);
+    }
+    
     setLoading(false);
   };
 
