@@ -56,7 +56,7 @@ export default function PhoneValidatorPage() {
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="e.g., +15551234567"
+                placeholder="e.g., +919876543210"
                 className="flex-grow"
                 aria-label="Phone Number"
               />
@@ -75,11 +75,20 @@ export default function PhoneValidatorPage() {
         {loading && (
           <div className="flex justify-center items-center gap-2 text-muted-foreground">
             <LoaderCircle className="animate-spin text-primary" />
-            <span>Contacting orbital satellites...</span>
+            <span>Contacting global telecom networks...</span>
           </div>
         )}
 
-        {results && <ResultsDisplay results={results} />}
+        {results && 
+          <Card>
+            <CardHeader>
+                <CardTitle className="font-headline text-primary">Validation Results</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ResultsDisplay results={results} />
+            </CardContent>
+          </Card>
+        }
       </div>
     </ToolPageWrapper>
   );

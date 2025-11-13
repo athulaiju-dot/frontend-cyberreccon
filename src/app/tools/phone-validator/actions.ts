@@ -3,7 +3,7 @@
 import { parsePhoneNumber, AsYouType, CountryCode } from 'libphonenumber-js';
 
 // Note: Carrier information is not reliably available with this library, unlike the python `phonenumbers` one.
-// We will return 'Unknown' as a placeholder.
+// We will return 'Unknown' as a placeholder, which aligns with the fallback in the provided Python script.
 
 export interface PhoneValidationResult {
   input: string;
@@ -20,7 +20,7 @@ export interface PhoneValidationResult {
 
 // A simple heuristic to guess the default country if not an international number
 function guessCountry(phone: string): CountryCode | undefined {
-    // This is a very basic implementation. 
+    // This is a very basic implementation.
     // In a real-world app, you might use the user's IP/locale.
     if (phone.startsWith('1') && !phone.startsWith('+')) return 'US';
     if (phone.startsWith('44') && !phone.startsWith('+')) return 'GB';
@@ -49,7 +49,7 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       valid: phoneNumber.isValid(),
       possible: phoneNumber.isPossible(),
       country: phoneNumber.country ? new Intl.DisplayNames(['en'], { type: 'region' }).of(phoneNumber.country) : "Unknown",
-      carrier: "Unknown", // Carrier lookup is not supported by libphonenumber-js
+      carrier: "Unknown", // Carrier lookup is not supported by libphonenumber-js, matching the Python script's fallback.
       type: phoneNumber.getType(),
     };
   } catch (error: any) {
