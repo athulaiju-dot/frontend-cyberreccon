@@ -28,9 +28,16 @@ export default function LoginPage() {
     }
   };
 
+  const imageUrl = "https://images.unsplash.com/photo-1624397503444-6e6041355b9a?q=80&w=2070&auto=format&fit=crop";
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <Card className="mx-auto max-w-sm w-full">
+    <div 
+      className="flex items-center justify-center min-h-screen bg-cover bg-center"
+      style={{ backgroundImage: `url(${imageUrl})` }}
+      data-ai-hint="cyber security city"
+    >
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+      <Card className="mx-auto max-w-sm w-full z-10 bg-card/80">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-2 mb-4">
              <TerminalSquare className="size-8 text-primary" />
