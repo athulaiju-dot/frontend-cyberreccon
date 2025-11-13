@@ -1,17 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, LoaderCircle } from "lucide-react";
+import { Globe, LoaderCircle, MapPin } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { ResultsDisplay } from "@/components/ResultsDisplay";
+
+interface Geolocation {
+  lat?: number;
+  lon?: number;
+}
 
 export default function IpLocatorPage() {
   const [ipAddress, setIpAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<object | null>(null);
+  const [geolocation, setGeolocation] = useState<Geolocation | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,21 +25,40 @@ export default function IpLocatorPage() {
 
     setLoading(true);
     setResults(null);
+    setGeolocation(null);
+
+    // Simulate API call based on the python script's output
     await new Promise(resolve => setTimeout(resolve, 1500));
-    setResults({
-      "IP Address": ipAddress,
-      "Geolocation": {
-        "City": "Mountain View",
-        "Region": "California",
-        "Country": "United States",
-        "Postal Code": "94043",
-        "Latitude": 37.422,
-        "Longitude": -122.084,
-      },
-      "ISP": "Google LLC",
-      "ASN": "AS15169",
-    });
+    
+    const apiResponse = {
+      "query": ipAddress,
+      "status": "success",
+      "country": "United States",
+      "countryCode": "US",
+      "region": "CA",
+      "regionName": "California",
+      "city": "Mountain View",
+      "zip": "94043",
+      "lat": 37.422,
+      "lon": -122.084,
+      "timezone": "America/Los_Angeles",
+      "isp": "Google LLC",
+      "org": "Google LLC",
+      "as": "AS15169 Google LLC"
+    };
+
+    setResults(apiResponse);
+    if (apiResponse.lat && apiResponse.lon) {
+      setGeolocation({ lat: apiResponse.lat, lon: apiResponse.lon });
+    }
     setLoading(false);
+  };
+
+  const openMap = () => {
+    if (geolocation?.lat && geolocation?.lon) {
+      const url = `https://www.google.com/maps?q=${geolocation.lat},${geolocation.lon}`;
+      window.open(url, "_blank");
+    }
   };
 
   return (
@@ -76,7 +101,24 @@ export default function IpLocatorPage() {
           </div>
         )}
 
-        {results && <ResultsDisplay results={results} />}
+        {results && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline text-primary">Investigation Results</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResultsDisplay results={results} />
+            </CardContent>
+            {geolocation && (
+              <CardFooter>
+                <Button onClick={openMap} variant="outline" className="w-full sm:w-auto ml-auto">
+                  <MapPin className="mr-2" />
+                  Open in Map
+                </Button>
+              </CardFooter>
+            )}
+          </Card>
+        )}
       </div>
     </ToolPageWrapper>
   );

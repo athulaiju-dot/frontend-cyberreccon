@@ -24,6 +24,19 @@ const ResultItem = ({ label, value }: { label: string; value: any }) => {
     if (typeof val === 'boolean') {
       return <span className={val ? "text-primary" : "text-destructive/80"}>{val.toString()}</span>;
     }
+    if (Array.isArray(val)) {
+        return (
+             <div className="pl-4 mt-2 border-l-2 border-border/50 space-y-2">
+                {val.map((item, index) => (
+                    <div key={index} className="flex flex-col">
+                         {Object.entries(item).map(([k, v]) => (
+                            <ResultItem key={k} label={k} value={v} />
+                         ))}
+                    </div>
+                ))}
+            </div>
+        )
+    }
     if (typeof val === 'object' && val !== null) {
       return (
         <div className="pl-4 mt-2 border-l-2 border-border/50">
@@ -37,28 +50,21 @@ const ResultItem = ({ label, value }: { label: string; value: any }) => {
   };
 
   return (
-    <div className="py-2">
-      <p className="font-semibold font-headline text-muted-foreground">
+    <div className="py-2 grid grid-cols-3 gap-4">
+      <p className="font-semibold font-headline text-muted-foreground col-span-1">
         {label.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:
       </p>
-      <div className="text-sm">{renderValue(value)}</div>
+      <div className="text-sm col-span-2">{renderValue(value)}</div>
     </div>
   );
 };
 
 export function ResultsDisplay({ results }: ResultsDisplayProps) {
   return (
-    <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-      <CardHeader>
-        <CardTitle className="font-headline text-primary">Investigation Results</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {Object.entries(results).map(([key, value]) => (
-            <ResultItem key={key} label={key} value={value} />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-1 divide-y divide-border/50">
+        {Object.entries(results).map(([key, value]) => (
+        <ResultItem key={key} label={key} value={value} />
+        ))}
+    </div>
   );
 }
