@@ -2,8 +2,8 @@
 
 import { parsePhoneNumber, AsYouType, CountryCode } from 'libphonenumber-js';
 
-// Note: Carrier information is not reliably available with this library, unlike the python `phonenumbers` one.
-// We will return 'Unknown' as a placeholder, which aligns with the fallback in the provided Python script.
+// Note: Carrier information is not reliably available with libphonenumber-js.
+// It has been removed to avoid providing inaccurate "Unknown" data.
 
 export interface PhoneValidationResult {
   input: string;
@@ -13,7 +13,6 @@ export interface PhoneValidationResult {
   valid?: boolean;
   possible?: boolean;
   country?: string;
-  carrier?: string;
   type?: string;
   error?: string;
 }
@@ -22,10 +21,14 @@ export interface PhoneValidationResult {
 function guessCountry(phone: string): CountryCode | undefined {
     // This is a very basic implementation.
     // In a real-world app, you might use the user's IP/locale.
-    if (phone.startsWith('1') && !phone.startsWith('+')) return 'US';
-    if (phone.startsWith('44') && !phone.startsWith('+')) return 'GB';
-    if (phone.startsWith('91') && !phone.startsWith('+')) return 'IN';
-    return 'US'; // Default fallback
+    // Defaulting to 'US' if no other pattern matches.
+    if (phone.startsWith('+')) {
+      // libphonenumber-js handles this automatically if a country code is present
+      return undefined;
+    }
+    if (phone.startsWith('44')) return 'GB';
+    if (phone.startsWith('91')) return 'IN';
+    return 'US';
 }
 
 
@@ -35,10 +38,11 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
   }
 
   try {
+    // Let parsePhoneNumber handle country detection if possible (e.g. from + country code)
     const phoneNumber = parsePhoneNumber(phone, guessCountry(phone));
-
+    
     if (!phoneNumber) {
-         throw new Error("Could not parse phone number.");
+         throw new Error("Could not parse phone number. Check format (e.g., +15551234567).");
     }
     
     return {
@@ -49,13 +53,15 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       valid: phoneNumber.isValid(),
       possible: phoneNumber.isPossible(),
       country: phoneNumber.country ? new Intl.DisplayNames(['en'], { type: 'region' }).of(phoneNumber.country) : "Unknown",
-      carrier: "Unknown", // Carrier lookup is not supported by libphonenumber-js, matching the Python script's fallback.
       type: phoneNumber.getType(),
     };
   } catch (error: any) {
+    // The library throws an error for invalid numbers, which we can catch.
     return {
       input: phone,
-      error: error.message || "Failed to validate phone number. Please check the format (e.g., +15551234567).",
+      error: error.message === 'NOT_A_NUMBER' 
+        ? "Invalid number. Please check the format (e.g., +15551234567)."
+        : "Failed to validate phone number. Please check the format (e.g., +15551234567).",
     };
   }
 }
