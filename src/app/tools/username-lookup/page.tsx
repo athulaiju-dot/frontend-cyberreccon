@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { UserSearch, LoaderCircle, CheckCircle, Search } from "lucide-react";
+import { UserSearch, LoaderCircle, CheckCircle, Search, ChevronDown } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface PlatformResult {
   found: { username: string; url: string }[];
@@ -18,10 +21,51 @@ interface Results {
   [platform: string]: PlatformResult;
 }
 
+const ALL_PLATFORMS = [
+  "GitHub",
+  "Twitter",
+  "Reddit",
+  "Instagram",
+  "Facebook",
+  "LinkedIn",
+  "Pinterest",
+  "Medium",
+  "YouTube",
+  "Quora",
+];
+
+const initialSelectedPlatforms = ALL_PLATFORMS.reduce((acc, platform) => {
+  acc[platform] = true;
+  return acc;
+}, {} as Record<string, boolean>);
+
+
 export default function UsernameLookupPage() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Results | null>(null);
+  const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, boolean>>(initialSelectedPlatforms);
+
+  const handlePlatformChange = (platform: string) => {
+    setSelectedPlatforms(prev => ({ ...prev, [platform]: !prev[platform] }));
+  };
+
+  const handleSelectAll = () => {
+     const allSelected = ALL_PLATFORMS.reduce((acc, platform) => {
+      acc[platform] = true;
+      return acc;
+    }, {} as Record<string, boolean>);
+    setSelectedPlatforms(allSelected);
+  }
+
+  const handleDeselectAll = () => {
+    const allDeselected = ALL_PLATFORMS.reduce((acc, platform) => {
+      acc[platform] = false;
+      return acc;
+    }, {} as Record<string, boolean>);
+    setSelectedPlatforms(allDeselected);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +75,8 @@ export default function UsernameLookupPage() {
     setResults(null);
     // Simulate API call based on the provided python script's logic
     await new Promise(resolve => setTimeout(resolve, 2000));
-    setResults({
+    
+    const fullResults: Results = {
       "GitHub": {
         "found": [
           { "username": username, "url": `https://github.com/${username}` },
@@ -54,8 +99,24 @@ export default function UsernameLookupPage() {
       "Instagram": {
         "found": [],
         "discovered": [`real_${username}`, `the.${username}`]
-      }
-    });
+      },
+       "Facebook": { "found": [], "discovered": [] },
+       "LinkedIn": { "found": [{ "username": username, "url": `https://linkedin.com/in/${username}` }], "discovered": [] },
+       "Pinterest": { "found": [], "discovered": [] },
+       "Medium": { "found": [], "discovered": [`@${username}`] },
+       "YouTube": { "found": [{ "username": `@${username}`, "url": `https://youtube.com/@${username}` }], "discovered": [] },
+       "Quora": { "found": [], "discovered": [] }
+    };
+    
+    const activePlatforms = Object.keys(selectedPlatforms).filter(p => selectedPlatforms[p]);
+    const filteredResults = activePlatforms.reduce((acc, platform) => {
+        if(fullResults[platform]) {
+            acc[platform] = fullResults[platform];
+        }
+        return acc;
+    }, {} as Results)
+
+    setResults(filteredResults);
     setLoading(false);
   };
   
@@ -76,6 +137,8 @@ export default function UsernameLookupPage() {
     </div>
   )
 
+  const selectedCount = Object.values(selectedPlatforms).filter(Boolean).length;
+
   return (
     <ToolPageWrapper
       title="Username Lookup"
@@ -84,29 +147,61 @@ export default function UsernameLookupPage() {
     >
       <div className="space-y-8">
         <Card>
-          <CardHeader>
-            <CardTitle>Enter Username</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4">
-              <Input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g., niazahamed"
-                className="flex-grow"
-                aria-label="Username"
-              />
-              <Button type="submit" disabled={loading || !username} className="w-full sm:w-auto">
-                {loading ? (
-                  <LoaderCircle className="animate-spin" />
-                ) : (
-                  <UserSearch className="mr-2" />
-                )}
-                Search
-              </Button>
-            </form>
-          </CardContent>
+          <form onSubmit={handleSubmit}>
+            <CardHeader>
+              <CardTitle>Enter Username</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <Input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="e.g., niazahamed"
+                  className="flex-grow"
+                  aria-label="Username"
+                />
+                <Button type="submit" disabled={loading || !username} className="w-full sm:w-auto">
+                  {loading ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <UserSearch className="mr-2" />
+                  )}
+                  Search
+                </Button>
+              </div>
+
+              <Collapsible open={isPlatformsOpen} onOpenChange={setIsPlatformsOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <span>Select Platforms ({selectedCount} / {ALL_PLATFORMS.length})</span>
+                    <ChevronDown className={`transform transition-transform ${isPlatformsOpen ? 'rotate-180' : ''}`} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-4 pt-4">
+                   <div className="flex items-center gap-4">
+                      <Button variant="ghost" size="sm" onClick={handleSelectAll}>Select All</Button>
+                      <Button variant="ghost" size="sm" onClick={handleDeselectAll}>Deselect All</Button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {ALL_PLATFORMS.map(platform => (
+                      <div key={platform} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={platform}
+                          checked={selectedPlatforms[platform]}
+                          onCheckedChange={() => handlePlatformChange(platform)}
+                        />
+                        <Label htmlFor={platform} className="font-medium cursor-pointer">
+                          {platform}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+            </CardContent>
+          </form>
         </Card>
 
         {loading && (
@@ -122,43 +217,47 @@ export default function UsernameLookupPage() {
               <CardTitle className="font-headline text-primary">Investigation Results for "{username}"</CardTitle>
             </CardHeader>
             <CardContent>
-              <Accordion type="multiple" defaultValue={Object.keys(results)} className="w-full">
-                {Object.entries(results).map(([platform, data]) => (
-                  (data.found.length > 0 || data.discovered.length > 0) && (
-                    <AccordionItem value={platform} key={platform}>
-                      <AccordionTrigger className="font-headline text-lg hover:no-underline">
-                        <div className="flex items-center gap-3">
-                          {platform}
-                          <Badge variant="secondary">{data.found.length} Found</Badge>
-                          <Badge variant="outline">{data.discovered.length} Discovered</Badge>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-2 space-y-3">
-                        {data.found.length > 0 && (
-                          <div>
-                            <h4 className="font-semibold text-primary mb-2">Found Accounts</h4>
-                            <div className="flex flex-col gap-1">
-                              {data.found.map(item => (
-                                <ResultItem key={item.url} label={item.username} value={item.url} isUrl />
-                              ))}
-                            </div>
+               {Object.keys(results).length > 0 ? (
+                <Accordion type="multiple" defaultValue={Object.keys(results)} className="w-full">
+                  {Object.entries(results).map(([platform, data]) => (
+                    (data.found.length > 0 || data.discovered.length > 0) && (
+                      <AccordionItem value={platform} key={platform}>
+                        <AccordionTrigger className="font-headline text-lg hover:no-underline">
+                          <div className="flex items-center gap-3">
+                            {platform}
+                            <Badge variant="secondary">{data.found.length} Found</Badge>
+                            <Badge variant="outline">{data.discovered.length} Discovered</Badge>
                           </div>
-                        )}
-                        {data.discovered.length > 0 && (
-                          <div>
-                             <h4 className="font-semibold text-accent mb-2">Discovered Usernames</h4>
-                             <div className="flex flex-wrap gap-2">
-                                {data.discovered.map(name => (
-                                  <Badge key={name} variant="outline" className="font-mono bg-background/50">{name}</Badge>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2 space-y-3">
+                          {data.found.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold text-primary mb-2">Found Accounts</h4>
+                              <div className="flex flex-col gap-1">
+                                {data.found.map(item => (
+                                  <ResultItem key={item.url} label={item.username} value={item.url} isUrl />
                                 ))}
-                             </div>
-                          </div>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  )
-                ))}
-              </Accordion>
+                              </div>
+                            </div>
+                          )}
+                          {data.discovered.length > 0 && (
+                            <div>
+                               <h4 className="font-semibold text-accent mb-2">Discovered Usernames</h4>
+                               <div className="flex flex-wrap gap-2">
+                                  {data.discovered.map(name => (
+                                    <Badge key={name} variant="outline" className="font-mono bg-background/50">{name}</Badge>
+                                  ))}
+                               </div>
+                            </div>
+                          )}
+                        </AccordionContent>
+                      </AccordionItem>
+                    )
+                  ))}
+                </Accordion>
+              ) : (
+                <p className="text-muted-foreground text-center">No accounts found for the selected platforms.</p>
+              )}
             </CardContent>
           </Card>
         )}
