@@ -29,17 +29,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  const imageUrl = "https://images.unsplash.com/photo-1593466511996-856d7aa49857?q=80&w=2070&auto=format&fit=crop";
+
 
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
-        <SidebarHeader>
-          <Link href="/" className="flex items-center gap-2.5 px-2">
-            <TerminalSquare className="size-7 text-primary" />
-            <span className="font-bold text-lg text-primary font-headline">
-              CyberTrace
-            </span>
-          </Link>
+        <SidebarHeader 
+            className="bg-cover bg-center relative"
+            style={{ backgroundImage: `url(${imageUrl})` }}
+            data-ai-hint="cyber security"
+        >
+          <div className="absolute inset-0 bg-black/50 z-0" />
+          <div className="relative z-10 w-full">
+              <Link href="/" className="flex items-center gap-2.5 px-2">
+                <TerminalSquare className="size-7 text-primary" />
+                <span className="font-bold text-lg text-primary font-headline">
+                  CyberTrace
+                </span>
+              </Link>
+          </div>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
@@ -83,12 +92,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-12 items-center border-b px-4 md:hidden">
-          <SidebarTrigger />
-          <Link href="/" className="flex items-center gap-2 font-bold ml-4">
-            <TerminalSquare className="size-6 text-primary" />
-            <span className="font-headline text-primary">CyberTrace</span>
-          </Link>
+        <header 
+          className="flex h-16 items-center border-b px-4 md:hidden bg-cover bg-center relative"
+          style={{ backgroundImage: `url(${imageUrl})` }}
+          data-ai-hint="cyber security"
+        >
+          <div className="absolute inset-0 bg-black/50 z-0" />
+          <div className="relative z-10 flex items-center w-full">
+            <SidebarTrigger />
+            <Link href="/" className="flex items-center gap-2 font-bold ml-4">
+              <TerminalSquare className="size-6 text-primary" />
+              <span className="font-headline text-primary">CyberTrace</span>
+            </Link>
+          </div>
         </header>
         {children}
       </SidebarInset>
