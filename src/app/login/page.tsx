@@ -28,16 +28,16 @@ export default function LoginPage() {
     }
   };
 
-  const imageUrl = "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=2070&auto=format&fit=crop";
+  const imageUrl = "https://images.unsplash.com/photo-1597852074816-d933c7d2b988?q=80&w=2070&auto=format&fit=crop";
 
   return (
     <div 
       className="flex items-center justify-center min-h-screen bg-cover bg-center"
       style={{ backgroundImage: `url(${imageUrl})` }}
-      data-ai-hint="digital grid"
+      data-ai-hint="digital security"
     >
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
-      <Card className="mx-auto max-w-sm w-full z-10 bg-card/80">
+      <div className="absolute inset-0 bg-background/70" />
+      <Card className="mx-auto max-w-sm w-full z-10 bg-card/80 border-border/50">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-2 mb-4">
              <TerminalSquare className="size-8 text-primary" />
