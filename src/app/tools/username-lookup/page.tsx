@@ -5,21 +5,15 @@ import { UserSearch, LoaderCircle, CheckCircle, Search, ChevronDown } from "luci
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { searchUsernames, type UsernameSearchResults } from "./actions";
 
-interface PlatformResult {
-  found: { username: string; url: string }[];
-  discovered: string[];
-}
-
-interface Results {
-  [platform: string]: PlatformResult;
-}
+type Results = UsernameSearchResults;
 
 const ALL_PLATFORMS = [
   "GitHub",
@@ -32,7 +26,7 @@ const ALL_PLATFORMS = [
   "Medium",
   "YouTube",
   "Quora",
-];
+] as const;
 
 const initialSelectedPlatforms = ALL_PLATFORMS.reduce((acc, platform) => {
   acc[platform] = true;
@@ -73,50 +67,19 @@ export default function UsernameLookupPage() {
 
     setLoading(true);
     setResults(null);
-    // Simulate API call based on the provided python script's logic
-    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    const fullResults: Results = {
-      "GitHub": {
-        "found": [
-          { "username": username, "url": `https://github.com/${username}` },
-          { "username": `${username}_dev`, "url": `https://github.com/${username}_dev` }
-        ],
-        "discovered": [`${username}123`, `${username}-portfolio`, `dev_${username}`]
-      },
-      "Twitter": {
-        "found": [
-          { "username": username, "url": `https://twitter.com/${username}` }
-        ],
-        "discovered": []
-      },
-      "Reddit": {
-        "found": [
-           { "username": username, "url": `https://reddit.com/u/${username}` }
-        ],
-        "discovered": [`u_${username}_alt`, `${username}_fan`]
-      },
-      "Instagram": {
-        "found": [],
-        "discovered": [`real_${username}`, `the.${username}`]
-      },
-       "Facebook": { "found": [], "discovered": [] },
-       "LinkedIn": { "found": [{ "username": username, "url": `https://linkedin.com/in/${username}` }], "discovered": [] },
-       "Pinterest": { "found": [], "discovered": [] },
-       "Medium": { "found": [], "discovered": [`@${username}`] },
-       "YouTube": { "found": [{ "username": `@${username}`, "url": `https://youtube.com/@${username}` }], "discovered": [] },
-       "Quora": { "found": [], "discovered": [] }
-    };
-    
-    const activePlatforms = Object.keys(selectedPlatforms).filter(p => selectedPlatforms[p]);
-    const filteredResults = activePlatforms.reduce((acc, platform) => {
-        if(fullResults[platform]) {
-            acc[platform] = fullResults[platform];
-        }
-        return acc;
-    }, {} as Results)
+    const activePlatforms = Object.entries(selectedPlatforms)
+        .filter(([,isSelected]) => isSelected)
+        .map(([platform]) => platform) as (typeof ALL_PLATFORMS)[number][];
 
-    setResults(filteredResults);
+    try {
+        const searchResults = await searchUsernames(username, activePlatforms);
+        setResults(searchResults);
+    } catch(error) {
+        console.error("Username search failed:", error);
+        // Optionally, show an error toast to the user
+    }
+
     setLoading(false);
   };
   
@@ -218,7 +181,7 @@ export default function UsernameLookupPage() {
             </CardHeader>
             <CardContent>
                {Object.keys(results).length > 0 ? (
-                <Accordion type="multiple" defaultValue={Object.keys(results)} className="w-full">
+                <Accordion type="multiple" defaultValue={Object.keys(results).filter(p => results[p].found.length > 0 || results[p].discovered.length > 0)} className="w-full">
                   {Object.entries(results).map(([platform, data]) => (
                     (data.found.length > 0 || data.discovered.length > 0) && (
                       <AccordionItem value={platform} key={platform}>
