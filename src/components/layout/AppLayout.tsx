@@ -24,11 +24,26 @@ import { useIsMobile } from "@/hooks/use-mobile";
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   const isAuthPage = pathname === '/login' || pathname === '/signup';
 
   if (isAuthPage) {
     return <>{children}</>;
+  }
+
+  // Render a placeholder on the server and initial client render
+  if (!isClient) {
+    return (
+      <div className="flex min-h-screen w-full bg-background">
+        <div className="w-12 border-r" />
+        <div className="flex-1 p-4" />
+      </div>
+    );
   }
 
   const imageUrl = "https://images.unsplash.com/photo-1593466511996-856d7aa49857?q=80&w=2070&auto=format&fit=crop";
