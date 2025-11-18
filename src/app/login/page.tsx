@@ -28,13 +28,13 @@ export default function LoginPage() {
     }
   };
 
-  const imageUrl = "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=2070&auto=format&fit=crop";
+  const imageUrl = "https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2070&auto=format&fit=crop";
 
   return (
     <div 
       className="flex items-center justify-center min-h-screen bg-cover bg-center"
       style={{ backgroundImage: `url(${imageUrl})` }}
-      data-ai-hint="digital grid"
+      data-ai-hint="futuristic grid green"
     >
       <div className="absolute inset-0 bg-background/70" />
       <Card className="mx-auto max-w-sm w-full z-10 bg-card/80 border-border/50">

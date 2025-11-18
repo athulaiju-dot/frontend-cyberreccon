@@ -40,8 +40,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   if (!isClient) {
     return (
       <div className="flex min-h-screen w-full bg-background">
-        <div className="w-12 border-r" />
-        <div className="flex-1 p-4" />
+        <div className="w-[3rem] border-r" />
+        <div className="flex-1" />
       </div>
     );
   }
