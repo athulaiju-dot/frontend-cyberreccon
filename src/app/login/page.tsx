@@ -34,7 +34,7 @@ export default function LoginPage() {
     <div 
       className="flex items-center justify-center min-h-screen bg-cover bg-center"
       style={{ backgroundImage: `url(${imageUrl})` }}
-      data-ai-hint="futuristic grid green"
+      data-ai-hint="team working office"
     >
       <div className="absolute inset-0 bg-background/70" />
       <Card className="mx-auto max-w-sm w-full z-10 bg-card/80 border-border/50">
