@@ -36,11 +36,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // Render a placeholder on the server and initial client render
+  // Render a placeholder on the server and initial client render to prevent hydration mismatch
   if (!isClient) {
     return (
       <div className="flex min-h-screen w-full bg-background">
-        <div className="w-[3rem] border-r" />
+        <div className="hidden md:block w-[3rem] border-r" />
         <div className="flex-1" />
       </div>
     );
