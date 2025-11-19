@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { searchUsernames, type UsernameSearchResults } from "./actions";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { Switch } from "@/components/ui/switch";
 
 type Results = UsernameSearchResults;
 
@@ -29,6 +30,8 @@ const ALL_PLATFORMS = [
   "Quora",
 ] as const;
 
+type PlatformKey = (typeof ALL_PLATFORMS)[number];
+
 const initialSelectedPlatforms = ALL_PLATFORMS.reduce((acc, platform) => {
   acc[platform] = true;
   return acc;
@@ -41,6 +44,7 @@ export default function UsernameLookupPage() {
   const [results, setResults] = useState<Results | null>(null);
   const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, boolean>>(initialSelectedPlatforms);
+  const [includeDiscovery, setIncludeDiscovery] = useState(true);
 
   const handlePlatformChange = (platform: string) => {
     setSelectedPlatforms(prev => ({ ...prev, [platform]: !prev[platform] }));
@@ -71,10 +75,10 @@ export default function UsernameLookupPage() {
     
     const activePlatforms = Object.entries(selectedPlatforms)
         .filter(([,isSelected]) => isSelected)
-        .map(([platform]) => platform) as (typeof ALL_PLATFORMS)[number][];
+        .map(([platform]) => platform) as PlatformKey[];
 
     try {
-        const searchResults = await searchUsernames(username, activePlatforms);
+        const searchResults = await searchUsernames(username, activePlatforms, includeDiscovery);
         setResults(searchResults);
     } catch(error) {
         console.error("Username search failed:", error);
@@ -164,6 +168,15 @@ export default function UsernameLookupPage() {
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+                
+                <div className="flex items-center space-x-2">
+                    <Switch 
+                        id="discovery-mode" 
+                        checked={includeDiscovery}
+                        onCheckedChange={setIncludeDiscovery}
+                    />
+                    <Label htmlFor="discovery-mode">Enable DuckDuckGo Discovery</Label>
+                </div>
 
               </CardContent>
             </form>
@@ -182,8 +195,8 @@ export default function UsernameLookupPage() {
                 <CardTitle className="font-headline text-primary">Investigation Results for "{username}"</CardTitle>
               </CardHeader>
               <CardContent>
-                 {Object.keys(results).length > 0 ? (
-                  <Accordion type="multiple" defaultValue={Object.keys(results).filter(p => results[p].found.length > 0 || results[p].discovered.length > 0)} className="w-full">
+                 {Object.keys(results).length > 0 && Object.values(results).some(r => r.found.length > 0 || r.discovered.length > 0) ? (
+                  <Accordion type="multiple" defaultValue={Object.keys(results).filter(p => results[p as PlatformKey].found.length > 0 || results[p as PlatformKey].discovered.length > 0)} className="w-full">
                     {Object.entries(results).map(([platform, data]) => (
                       (data.found.length > 0 || data.discovered.length > 0) && (
                         <AccordionItem value={platform} key={platform}>
@@ -191,7 +204,7 @@ export default function UsernameLookupPage() {
                             <div className="flex items-center gap-3">
                               {platform}
                               <Badge variant="secondary">{data.found.length} Found</Badge>
-                              <Badge variant="outline">{data.discovered.length} Discovered</Badge>
+                              {includeDiscovery && <Badge variant="outline">{data.discovered.length} Discovered</Badge>}
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="pt-2 space-y-3">
@@ -205,7 +218,7 @@ export default function UsernameLookupPage() {
                                 </div>
                               </div>
                             )}
-                            {data.discovered.length > 0 && (
+                            {data.discovered.length > 0 && includeDiscovery && (
                               <div>
                                  <h4 className="font-semibold text-accent mb-2">Discovered Usernames</h4>
                                  <div className="flex flex-wrap gap-2">
