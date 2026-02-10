@@ -1,7 +1,12 @@
 'use server';
 
 import * as cheerio from 'cheerio';
-import { URL, URLSearchParams } from 'url';
+import { URL } from 'url';
+
+/**
+ * @fileOverview Backend logic for Sherlock-style username search.
+ * Includes variation generation and DuckDuckGo discovery.
+ */
 
 const PLATFORMS = {
     "GitHub": {
@@ -109,7 +114,6 @@ function generateVariations(seed: string, max_count = 120): string[] {
     return Array.from(variants).slice(0, max_count);
 }
 
-
 function validUsernameForPlatform(username: string, platformKey: PlatformKey): boolean {
     const pattern = PLATFORMS[platformKey].username_pattern;
     return new RegExp(pattern).test(username);
@@ -140,12 +144,11 @@ function extractUsernameFromUrl(url: string, platformKey: PlatformKey): string |
         if (path.startsWith(prefix)) {
             path = path.substring(prefix.length);
         } else if ((platformKey === 'YouTube' || platformKey === 'Medium') && path.startsWith('/@')) {
-             // Already handled by prefix, but good to keep as a fallback
+             // Already handled by prefix
         } else if (prefix !== '/') {
             return null;
         }
         
-        // The username is the remaining part of the path
         let username = path.split('/').pop() || '';
         if ((platformKey === 'YouTube' || platformKey === 'Medium') && username.startsWith('@')) {
             username = username.substring(1);
@@ -155,8 +158,7 @@ function extractUsernameFromUrl(url: string, platformKey: PlatformKey): string |
             return username;
         }
 
-        // Quora special case for spaces
-        const decodedUsername = decodeURIComponent(username);
+        const decodedUsername = decodeURIComponent(username).replace(/_/g, ' ');
         if (validUsernameForPlatform(decodedUsername, platformKey)) {
             return decodedUsername;
         }
@@ -167,7 +169,7 @@ function extractUsernameFromUrl(url: string, platformKey: PlatformKey): string |
     return null;
 }
 
-async function getRequest(url: string, timeout = 12000): Promise<Response | null> {
+async function headExists(url: string, timeout = 12000): Promise<boolean> {
     try {
         const response = await fetch(url, {
             method: 'GET',
@@ -175,17 +177,11 @@ async function getRequest(url: string, timeout = 12000): Promise<Response | null
             signal: AbortSignal.timeout(timeout),
             redirect: 'follow'
         });
-        return response;
+        return [200, 301, 302, 401, 403].includes(response.status);
     } catch (error) {
-        return null;
+        return false;
     }
 }
-
-async function headExists(url: string, timeout = 12000): Promise<boolean> {
-    const response = await getRequest(url, timeout);
-    return response ? [200, 301, 302, 401, 403].includes(response.status) : false;
-}
-
 
 async function checkExactUsername(platformKey: PlatformKey, username: string): Promise<{ username: string; url: string } | null> {
     if (!validUsernameForPlatform(username, platformKey)) {
@@ -196,14 +192,15 @@ async function checkExactUsername(platformKey: PlatformKey, username: string): P
     return exists ? { username, url } : null;
 }
 
-
 async function ddgSearchUsernames(platformKey: PlatformKey, seed: string, maxHits = 20): Promise<string[]> {
     const domain = PLATFORMS[platformKey].domain;
     const q = `site:${domain} "${seed}"`;
     const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
 
     try {
-        const response = await getRequest(url);
+        const response = await fetch(url, {
+            headers: { 'User-Agent': UA }
+        });
         if (!response || !response.ok) return [];
 
         const html = await response.text();
@@ -221,7 +218,6 @@ async function ddgSearchUsernames(platformKey: PlatformKey, seed: string, maxHit
         });
         return Array.from(candidates);
     } catch (error) {
-        console.error(`DDG search failed for ${platformKey}:`, error);
         return [];
     }
 }
@@ -268,7 +264,6 @@ export async function searchUsernames(
     
     await Promise.allSettled([...discoveryPromises, ...checkPromises]);
 
-    // De-duplicate and sort found results
     for (const p of platforms) {
         const foundUsernames = new Set<string>();
         results[p].found = results[p].found.filter(item => {

@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResultsDisplay } from "@/components/ResultsDisplay";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { lookupDomain, type DomainLookupResult } from "./actions";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DomainLookupPage() {
   const [domain, setDomain] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<object | null>(null);
+  const [results, setResults] = useState<DomainLookupResult | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,29 +23,33 @@ export default function DomainLookupPage() {
 
     setLoading(true);
     setResults(null);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setResults({
-      "Domain Name": domain,
-      "WHOIS": {
-        "Registrar": "NameCheap, Inc.",
-        "Creation Date": "2015-08-12T14:30:00Z",
-        "Expiration Date": "2025-08-12T14:30:00Z",
-        "Registrant": "REDACTED FOR PRIVACY",
-      },
-      "DNS Records": {
-        "A": "192.0.2.1",
-        "MX": "mail.example.com",
-        "TXT": "v=spf1 ...",
-      },
-    });
-    setLoading(false);
+    
+    try {
+      const data = await lookupDomain(domain);
+      setResults(data);
+      if (data.status === 'fail') {
+         toast({
+          variant: "destructive",
+          title: "Lookup Incomplete",
+          description: data.message || "Could not retrieve all DNS records.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Lookup Failed",
+        description: error.message || "Failed to resolve domain.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <AppLayout>
       <ToolPageWrapper
         title="Domain Lookup"
-        description="Retrieve WHOIS, DNS, and other records for a domain."
+        description="Retrieve DNS and other infrastructure records for a domain."
         icon={Network}
       >
         <div className="space-y-8">
@@ -56,7 +63,7 @@ export default function DomainLookupPage() {
                   type="text"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
-                  placeholder="e.g., example.com"
+                  placeholder="e.g., google.com"
                   className="flex-grow"
                   aria-label="Domain Name"
                 />
@@ -75,11 +82,20 @@ export default function DomainLookupPage() {
           {loading && (
             <div className="flex justify-center items-center gap-2 text-muted-foreground">
               <LoaderCircle className="animate-spin text-primary" />
-              <span>Querying global DNS servers...</span>
+              <span>Querying authoritative DNS servers...</span>
             </div>
           )}
 
-          {results && <ResultsDisplay results={results} />}
+          {results && (
+            <Card>
+               <CardHeader>
+                  <CardTitle className="font-headline text-primary">DNS Discovery Results</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResultsDisplay results={results} />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </ToolPageWrapper>
     </AppLayout>

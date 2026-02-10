@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResultsDisplay } from "@/components/ResultsDisplay";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { lookupEmail, type EmailLookupResult } from "./actions";
+import { useToast } from "@/hooks/use-toast";
 
 export default function EmailLookupPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<object | null>(null);
+  const [results, setResults] = useState<EmailLookupResult | null>(null);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,20 +23,19 @@ export default function EmailLookupPage() {
 
     setLoading(true);
     setResults(null);
-    await new Promise(resolve => setTimeout(resolve, 1800));
-    setResults({
-      "Email Address": email,
-      "Is Deliverable": "Yes",
-      "Domain Details": {
-        "Domain": email.split('@')[1],
-        "MX Records Found": true,
-      },
-      "Data Breaches": [
-        { "breach": "Large Social Media Platform 2021", "data_exposed": ["email", "password", "phone_number"] },
-        { "breach": "E-commerce Site 2020", "data_exposed": ["email", "address", "name"] },
-      ],
-    });
-    setLoading(false);
+    
+    try {
+      const data = await lookupEmail(email);
+      setResults(data);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Lookup Failed",
+        description: error.message || "Failed to analyze email address.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -73,11 +75,20 @@ export default function EmailLookupPage() {
           {loading && (
             <div className="flex justify-center items-center gap-2 text-muted-foreground">
               <LoaderCircle className="animate-spin text-primary" />
-              <span>Searching through data breaches...</span>
+              <span>Verifying domain MX records...</span>
             </div>
           )}
 
-          {results && <ResultsDisplay results={results} />}
+          {results && (
+            <Card>
+               <CardHeader>
+                  <CardTitle className="font-headline text-primary">Analysis Results</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResultsDisplay results={results} />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </ToolPageWrapper>
     </AppLayout>
