@@ -1,6 +1,6 @@
 'use server';
 
-import { dns } from 'node:dns/promises';
+import dns from 'node:dns/promises';
 
 /**
  * @fileOverview IP and Domain Geolocation Engine.

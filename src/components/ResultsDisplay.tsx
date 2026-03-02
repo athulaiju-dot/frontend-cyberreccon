@@ -27,13 +27,20 @@ const ResultItem = ({ label, value }: { label: string; value: any }) => {
     if (Array.isArray(val)) {
         return (
              <div className="pl-4 mt-2 border-l-2 border-border/50 space-y-2">
-                {val.map((item, index) => (
-                    <div key={index} className="flex flex-col">
-                         {Object.entries(item).map(([k, v]) => (
-                            <ResultItem key={k} label={k} value={v} />
-                         ))}
-                    </div>
-                ))}
+                {val.map((item, index) => {
+                    // If it's an object, render its entries
+                    if (typeof item === 'object' && item !== null) {
+                         return (
+                            <div key={index} className="flex flex-col">
+                                 {Object.entries(item).map(([k, v]) => (
+                                    <ResultItem key={k} label={k} value={v} />
+                                 ))}
+                            </div>
+                         )
+                    }
+                    // Otherwise just render the string/number value
+                    return <div key={index} className="text-foreground text-sm font-mono">{String(item)}</div>
+                })}
             </div>
         )
     }
