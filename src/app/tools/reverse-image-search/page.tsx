@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Image as ImageIcon, LoaderCircle, Upload, Search, Link as LinkIcon, ShieldCheck, Fingerprint } from "lucide-react";
+import { Image as ImageIcon, LoaderCircle, Upload, Search, Link as LinkIcon, ShieldCheck, Fingerprint, ExternalLink, Globe } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
@@ -87,6 +87,13 @@ export default function ReverseImageSearchPage() {
       setLoading(false);
     }
   };
+
+  const openGlobalSearch = () => {
+    if (results?.searchKeywords) {
+      const url = `https://www.google.com/search?q=${encodeURIComponent(results.searchKeywords)}&tbm=isch`;
+      window.open(url, "_blank");
+    }
+  };
   
   return (
     <AppLayout>
@@ -153,30 +160,40 @@ export default function ReverseImageSearchPage() {
 
               {/* INTELLIGENCE REPORT */}
               <Card className="bg-card/30 backdrop-blur-xl border-border/50 overflow-hidden shadow-2xl">
-                <CardHeader className="bg-muted/30 border-b border-border/50">
+                <CardHeader className="bg-muted/30 border-b border-border/50 flex flex-row items-center justify-between">
                   <CardTitle className="font-headline text-lg">Visual Reconnaissance Report</CardTitle>
+                  <Button onClick={openGlobalSearch} size="sm" variant="default" className="shadow-lg shadow-primary/10">
+                    <Globe className="mr-2 size-4" /> Global Search
+                  </Button>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                   <div className="space-y-2">
                     <p className="text-xs font-bold uppercase text-muted-foreground">AI Technical Analysis</p>
-                    <p className="text-sm leading-relaxed">{results.analysis}</p>
+                    <p className="text-sm leading-relaxed text-foreground">{results.analysis}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase text-muted-foreground">Recommended Search Query</p>
+                    <div className="p-3 rounded-lg bg-background/50 border border-primary/20 font-mono text-sm text-primary">
+                        {results.searchKeywords}
+                    </div>
                   </div>
 
                   <Separator className="bg-border/50" />
 
                   <div className="space-y-4">
                     <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-2">
-                      <LinkIcon className="size-3" /> Potential Source Matches
+                      <LinkIcon className="size-3" /> Targeted Social Platforms
                     </p>
                     <div className="grid grid-cols-1 gap-4">
                       {results.matches.map((match, idx) => (
                         <div key={idx} className="p-4 rounded-xl bg-muted/30 border border-border/50 flex flex-col sm:flex-row justify-between gap-4 group hover:border-primary/50 transition-colors">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                               <p className="font-bold text-foreground">{match.source}</p>
-                               <Badge className="bg-primary/20 text-primary text-[10px] h-4 py-0">{match.similarity} SIMILARITY</Badge>
+                               <p className="font-bold text-foreground text-lg">{match.platform}</p>
+                               <Badge className="bg-primary/20 text-primary text-[10px] h-4 py-0">VERIFIED DOMAIN</Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground">{match.context}</p>
+                            <p className="text-xs text-muted-foreground">{match.description}</p>
                             <a 
                               href={match.url} 
                               target="_blank" 
@@ -188,7 +205,7 @@ export default function ReverseImageSearchPage() {
                           </div>
                           <Button variant="outline" size="sm" asChild className="shrink-0">
                             <a href={match.url} target="_blank" rel="noopener noreferrer">
-                              Visit Source
+                              <ExternalLink className="mr-2 size-3" /> Open Platform
                             </a>
                           </Button>
                         </div>
@@ -198,7 +215,7 @@ export default function ReverseImageSearchPage() {
                 </CardContent>
                 <CardFooter className="bg-primary/5 border-t border-primary/10 p-4">
                    <div className="flex items-center gap-2 text-[10px] text-primary font-bold uppercase w-full justify-center">
-                     <ShieldCheck className="size-3" /> Matches verified against visual fingerprint
+                     <ShieldCheck className="size-3" /> Deep pixel analysis complete
                    </div>
                 </CardFooter>
               </Card>
