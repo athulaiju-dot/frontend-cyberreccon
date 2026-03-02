@@ -5,7 +5,7 @@ import { URL } from 'url';
 
 /**
  * @fileOverview Advanced Username Reconnaissance Engine.
- * Optimized for accuracy and high-yield discovery.
+ * Optimized for accuracy and prioritizing exact matches.
  */
 
 const PLATFORMS = {
@@ -14,7 +14,7 @@ const PLATFORMS = {
         "profile_url": "https://github.com/{username}",
         "username_pattern": /^[A-Za-z0-9-]{1,39}$/,
         "profile_path_prefix": "/",
-        "error_text": ["Not Found", "404", "This is not the user you're looking for"]
+        "error_text": ["Not Found", "404", "This is not the user you're looking for", "does not exist"]
     },
     "Twitter": {
         "domain": "x.com",
@@ -35,7 +35,7 @@ const PLATFORMS = {
         "profile_url": "https://www.instagram.com/{username}/",
         "username_pattern": /^[a-zA-Z0-9._]{1,30}$/,
         "profile_path_prefix": "/",
-        "error_text": ["Sorry, this page isn't available", "Page Not Found", "content isn't available"]
+        "error_text": ["Sorry, this page isn't available", "Page Not Found", "content isn't available", "broken link"]
     },
     "TikTok": {
         "domain": "tiktok.com",
@@ -78,6 +78,20 @@ const PLATFORMS = {
         "username_pattern": /^[A-Za-z0-9_-]{2,32}$/,
         "profile_path_prefix": "/id/",
         "error_text": ["The specified profile could not be found"]
+    },
+    "Medium": {
+        "domain": "medium.com",
+        "profile_url": "https://medium.com/@{username}",
+        "username_pattern": /^[@A-Za-z0-9_\-.]{1,60}$/,
+        "profile_path_prefix": "/@",
+        "error_text": ["404", "not found", "out of order"]
+    },
+    "Pinterest": {
+        "domain": "pinterest.com",
+        "profile_url": "https://www.pinterest.com/{username}/",
+        "username_pattern": /^[A-Za-z0-9_]{3,30}$/,
+        "profile_path_prefix": "/",
+        "error_text": ["404", "not found"]
     }
 } as const;
 
@@ -88,14 +102,15 @@ const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 /**
  * Generates smart variations of a seed username.
  */
-function generateVariations(seed: string, max_count = 100): string[] {
-    seed = seed.trim().toLowerCase();
+function generateVariations(seed: string, max_count = 150): string[] {
+    seed = seed.trim().toLowerCase().replace(/\s+/g, '');
     const variants = new Set<string>();
 
-    const prefixes = ["", "real", "the", "its", "iam", "official", "mr", "mrs", "dev", "cyber"];
-    const suffixes = ["", "hq", "official", "dev", "cyber", "x", "pro", "007", "123", "01"];
+    const prefixes = ["", "real", "the", "its", "iam", "official", "mr", "mrs", "dev", "cyber", "ace", "pro"];
+    const suffixes = ["", "hq", "official", "dev", "cyber", "x", "pro", "007", "123", "01", "app", "me", "live"];
     const separators = ["", "_", ".", "-"];
 
+    // Base variations
     for (const p of prefixes) {
         for (const sep of separators) {
             for (const s of suffixes) {
@@ -105,13 +120,19 @@ function generateVariations(seed: string, max_count = 100): string[] {
         }
     }
 
+    // Numeric variations
+    for (let i = 1; i <= 20; i++) {
+        variants.add(`${seed}${i}`);
+        variants.add(`${seed}_${i}`);
+    }
+
     return Array.from(variants).slice(0, max_count);
 }
 
 /**
  * Verifies if a username exists on a specific platform using deep inspection.
  */
-async function verifyAccountExistence(platformKey: PlatformKey, username: string): Promise<{ username: string; url: string; isExact: boolean } | null> {
+async function verifyAccountExistence(platformKey: PlatformKey, username: string): Promise<{ username: string; url: string } | null> {
     const platform = PLATFORMS[platformKey];
     if (!platform.username_pattern.test(username)) return null;
 
@@ -123,23 +144,29 @@ async function verifyAccountExistence(platformKey: PlatformKey, username: string
             headers: { 
                 'User-Agent': UA,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
             },
             cache: 'no-store',
             signal: AbortSignal.timeout(10000)
         });
 
-        // If status is 404, the account is definitely not there
+        // 404 is definitive
         if (response.status === 404) return null;
 
-        // If status is 200, we check for "soft 404s" in the response body
-        if (response.ok) {
+        // For others, check body content for "soft 404"
+        if (response.ok || response.status === 401 || response.status === 403) {
+            // Treat 401/403 (Unauthorized/Forbidden) as a likely "exists but private" case for some platforms
+            if (response.status === 401 || response.status === 403) {
+                 return { username, url };
+            }
+
             const body = await response.text();
             const lowerBody = body.toLowerCase();
             
             const hasErrorText = platform.error_text.some(text => lowerBody.includes(text.toLowerCase()));
             if (hasErrorText) return null;
 
-            return { username, url, isExact: false };
+            return { username, url };
         }
 
         return null;
@@ -215,7 +242,6 @@ export async function searchUsernames(
     platforms: PlatformKey[],
     includeDiscovery: boolean = true
 ): Promise<UsernameSearchResults> {
-
     const results: UsernameSearchResults = {};
     const variations = generateVariations(seed);
 
@@ -224,7 +250,7 @@ export async function searchUsernames(
     });
 
     const tasks = platforms.flatMap(platform => [
-        // 1. ALWAYS check exact seed first
+        // 1. Check exact seed first (Highest Priority)
         verifyAccountExistence(platform, seed).then(res => {
             if (res) results[platform].exactMatch = { username: res.username, url: res.url };
         }),
@@ -242,14 +268,15 @@ export async function searchUsernames(
 
     await Promise.allSettled(tasks);
 
-    // Clean up results
+    // Final cleanup to ensure no duplicates and no "exactMatch" duplicates in "found"
     platforms.forEach(p => {
         const seen = new Set<string>();
         if (results[p].exactMatch) seen.add(results[p].exactMatch!.username.toLowerCase());
 
         results[p].found = results[p].found.filter(item => {
-            if (seen.has(item.username.toLowerCase())) return false;
-            seen.add(item.username.toLowerCase());
+            const lower = item.username.toLowerCase();
+            if (seen.has(lower)) return false;
+            seen.add(lower);
             return true;
         });
 
