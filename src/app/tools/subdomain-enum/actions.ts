@@ -12,7 +12,7 @@ export interface SubdomainResult {
   subdomains: string[];
 }
 
-// Wordlist integrated from user's Python script
+// Wordlist integrated from user's Python script + common industry standards
 const USER_WORDLIST = [
   "www",
   "mail",
@@ -33,7 +33,7 @@ const USER_WORDLIST = [
 
 /**
  * Checks if a specific subdomain is active by performing a HEAD request.
- * Logic matches the 'Active Recon' pass from the user's script.
+ * Logic matches the 'Active Recon' pass from the user's script (status < 400).
  */
 async function checkActiveSubdomain(sub: string, domain: string): Promise<string | null> {
   const url = `https://${sub}.${domain}`;
@@ -50,7 +50,7 @@ async function checkActiveSubdomain(sub: string, domain: string): Promise<string
       return `${sub}.${domain}`;
     }
   } catch (e) {
-    // DNS resolution failure or timeout
+    // DNS resolution failure, timeout, or SSL error
   }
   return null;
 }
@@ -62,6 +62,7 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
 
   try {
     // --- Method 1: Passive Recon (crt.sh Logs) ---
+    // This finds subdomains from SSL certificate history
     const crtResponse = await fetch(`https://crt.sh/?q=%.${domain}&output=json`, {
       headers: { 'User-Agent': 'CyberTrace-OSINT' },
       signal: AbortSignal.timeout(10000)
@@ -73,6 +74,7 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
         const names = entry.name_value.split('\n');
         names.forEach((name: string) => {
           const cleanName = name.trim().toLowerCase();
+          // Filter out wildcards and ensure it's actually for this domain
           if (cleanName && !cleanName.includes('*') && cleanName.endsWith(`.${domain}`)) {
             uniqueSubs.add(cleanName);
           }
@@ -81,6 +83,7 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
     }
 
     // --- Method 2: Active Recon (User's Wordlist) ---
+    // This live-tests the common subdomains provided by the user
     const activeTasks = USER_WORDLIST.map(sub => checkActiveSubdomain(sub, domain));
     const activeResults = await Promise.allSettled(activeTasks);
 
@@ -90,6 +93,7 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
       }
     });
 
+    // Sort: Shortest first (usually primary assets), then alphabetical
     const sortedSubs = Array.from(uniqueSubs).sort((a, b) => {
       return a.length - b.length || a.localeCompare(b);
     });
@@ -101,6 +105,7 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
     };
   } catch (error: any) {
     console.error("Subdomain enumeration error:", error);
+    // If crt.sh fails but we have wordlist matches, return those
     if (uniqueSubs.size > 0) {
         return {
             domain,
