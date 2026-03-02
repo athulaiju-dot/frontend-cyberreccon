@@ -3,7 +3,7 @@
 /**
  * @fileOverview Hybrid Subdomain Enumeration Engine.
  * Combines Passive Recon (Certificate Transparency Logs) 
- * with Active Recon (Wordlist-based verification).
+ * with Active Recon (User Wordlist-based verification).
  */
 
 export interface SubdomainResult {
@@ -12,6 +12,7 @@ export interface SubdomainResult {
   subdomains: string[];
 }
 
+// Wordlist integrated from user's Python script
 const USER_WORDLIST = [
   "www",
   "mail",
@@ -32,23 +33,24 @@ const USER_WORDLIST = [
 
 /**
  * Checks if a specific subdomain is active by performing a HEAD request.
+ * Logic matches the 'Active Recon' pass from the user's script.
  */
 async function checkActiveSubdomain(sub: string, domain: string): Promise<string | null> {
   const url = `https://${sub}.${domain}`;
   try {
     const response = await fetch(url, {
       method: 'HEAD',
-      headers: { 'User-Agent': 'CyberTrace-OSINT-Scanner' },
+      headers: { 'User-Agent': 'CyberTrace-Security-Scanner' },
       signal: AbortSignal.timeout(3000), // 3 second timeout for speed
       cache: 'no-store'
     });
 
-    // If we get a response (even a 401/403), the subdomain exists and is active.
-    if (response.status < 500) {
+    // Logic from user script: Status code < 400 means found
+    if (response.status < 400) {
       return `${sub}.${domain}`;
     }
   } catch (e) {
-    // DNS resolution failure or timeout means it's likely not active or not a web server
+    // DNS resolution failure or timeout
   }
   return null;
 }
@@ -60,7 +62,6 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
 
   try {
     // --- Method 1: Passive Recon (crt.sh Logs) ---
-    // This finds subdomains that have had certificates issued.
     const crtResponse = await fetch(`https://crt.sh/?q=%.${domain}&output=json`, {
       headers: { 'User-Agent': 'CyberTrace-OSINT' },
       signal: AbortSignal.timeout(10000)
@@ -72,7 +73,6 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
         const names = entry.name_value.split('\n');
         names.forEach((name: string) => {
           const cleanName = name.trim().toLowerCase();
-          // Filter out wildcards and non-related domains
           if (cleanName && !cleanName.includes('*') && cleanName.endsWith(`.${domain}`)) {
             uniqueSubs.add(cleanName);
           }
@@ -80,8 +80,7 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
       });
     }
 
-    // --- Method 2: Active Recon (Wordlist Checking) ---
-    // This performs live checks against common subdomains (Integrated from user script).
+    // --- Method 2: Active Recon (User's Wordlist) ---
     const activeTasks = USER_WORDLIST.map(sub => checkActiveSubdomain(sub, domain));
     const activeResults = await Promise.allSettled(activeTasks);
 
@@ -92,7 +91,6 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
     });
 
     const sortedSubs = Array.from(uniqueSubs).sort((a, b) => {
-      // Sort by length first, then alphabetically
       return a.length - b.length || a.localeCompare(b);
     });
 
@@ -103,7 +101,6 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
     };
   } catch (error: any) {
     console.error("Subdomain enumeration error:", error);
-    // Even if one method fails, return what we found if anything
     if (uniqueSubs.size > 0) {
         return {
             domain,

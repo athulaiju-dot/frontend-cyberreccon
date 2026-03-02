@@ -1,13 +1,14 @@
 'use server';
 
 /**
- * @fileOverview Username Reconnaissance Engine.
- * Strictly prioritizes literal matches and implements logic from user script.
+ * @fileOverview Username Reconnaissance Engine (Best of Both).
+ * Merges user Python logic (literal-first, simple string detection)
+ * with robust TypeScript execution and variation generation.
  */
 
 const PLATFORMS = {
   "Instagram": "https://www.instagram.com/{}/",
-  "Twitter": "https://twitter.com/{}",
+  "Twitter": "https://twitter.com/{}/",
   "GitHub": "https://github.com/{}",
   "TikTok": "https://www.tiktok.com/@{}/",
   "YouTube": "https://www.youtube.com/@{}/",
@@ -23,48 +24,36 @@ export type PlatformKey = keyof typeof PLATFORMS;
 const HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
   "Accept-Language": "en-US,en;q=0.9",
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
 };
 
 /**
- * Checks if a profile exists using logic:
- * Status 200 AND absence of common "not found" strings.
+ * Implementation of user's profile_exists logic from Python.
+ * Simplified to reduce false negatives while maintaining security.
  */
 async function profileExists(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, {
       headers: HEADERS,
       cache: 'no-store',
-      // Social media sites can be slow to respond to cloud IPs
       signal: AbortSignal.timeout(10000)
     });
 
+    // logic from user script: status 200 AND absence of "not found" text
     if (response.status === 200) {
       const text = await response.text();
       const lowerText = text.toLowerCase();
       
-      // List of strings that indicate the profile does NOT exist even if 200 OK is returned
-      const notFoundIndicators = [
-        "not found",
-        "page not found",
-        "couldn't find this account",
-        "sorry, this page isn't available",
-        "user not found",
-        "profile_not_found",
-        "doesn't exist",
-        "account not found",
-        "login - instagram", // Often indicates a redirect to login for a non-existent profile
-        "redirected to login"
-      ];
-
-      const isNotFound = notFoundIndicators.some(indicator => lowerText.includes(indicator));
-      
-      if (!isNotFound) {
+      // Basic check from user script
+      if (!lowerText.includes("not found")) {
+        // Platform specific guard for Instagram/Twitter redirects
+        if (url.includes("instagram.com") && lowerText.includes("login - instagram")) {
+            return false;
+        }
         return true;
       }
     }
     
-    // Some platforms return 401/403 for private profiles, which we should treat as "exists"
+    // Status 401/403 often indicates a private profile tht DOES exist
     if (response.status === 401 || response.status === 403) {
       return true;
     }
@@ -112,7 +101,7 @@ export async function searchUsernames(
   });
 
   // STEP 1: CHECK EXACT USERNAME FIRST (HIGHEST PRIORITY)
-  // We do this in a separate, dedicated pass to ensure it's not buried
+  // Logic from user script: check exact input first pass
   const exactTasks = platforms.map(async (platform) => {
     const url = PLATFORMS[platform].replace('{}', username);
     const exists = await profileExists(url);
@@ -121,10 +110,10 @@ export async function searchUsernames(
     }
   });
 
-  // Wait for the exact matches to finish first
+  // Wait for the literal match scan to finish first
   await Promise.allSettled(exactTasks);
 
-  // STEP 2: CHECK VARIATIONS
+  // STEP 2: CHECK VARIATIONS (Logic from user script)
   const variantTasks = platforms.flatMap(platform => 
     variations
       .filter(v => v !== username) // Skip literal match since checked above
