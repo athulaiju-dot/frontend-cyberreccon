@@ -45,6 +45,7 @@ export default function UsernameLookupPage() {
         .map(([platform]) => platform) as PlatformKey[];
 
     try {
+        // Calling the Server Action
         const searchResults = await searchUsernames(username, activePlatforms);
         setResults(searchResults);
     } catch(error) {

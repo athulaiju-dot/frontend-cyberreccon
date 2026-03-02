@@ -1,8 +1,8 @@
-'use client';
+'use server';
 
 /**
- * @fileOverview Username Reconnaissance Engine.
- * Final implementation prioritizing Literal Matches and using User's Python logic.
+ * @fileOverview Username Reconnaissance Engine (Server-Side).
+ * Prioritizes Literal Matches and mimics Python script logic.
  */
 
 const PLATFORMS = {
@@ -21,29 +21,41 @@ export type PlatformKey = keyof typeof PLATFORMS;
 
 const HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.9",
 };
 
 /**
- * Core validation logic from User's Python script.
- * Simple but effective: Status 200 and no "not found" text.
+ * Core validation logic mimicking the User's Python script.
+ * Runs on the server to bypass CORS.
  */
 async function profileExists(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, {
       headers: HEADERS,
       cache: 'no-store',
-      signal: AbortSignal.timeout(10000)
+      // Abort after 8 seconds to keep the scan snappy
+      signal: AbortSignal.timeout(8000)
     });
 
-    // Exact logic from user's script
+    // Python logic: Status 200 + Content Check
     if (response.status === 200) {
       const text = await response.text();
       const lowerText = text.toLowerCase();
       
-      // Look for "not found" or "page not found" common strings
-      if (!lowerText.includes("not found") && !lowerText.includes("page unavailable")) {
-        // Special case for Instagram/Twitter login walls which are NOT 404s
+      // Common "Not Found" signatures
+      const notFoundSignatures = [
+        "not found", 
+        "page not found", 
+        "page unavailable", 
+        "sorry, this page isn't available",
+        "doesn't exist"
+      ];
+
+      const isNotFound = notFoundSignatures.some(sig => lowerText.includes(sig));
+      
+      if (!isNotFound) {
+        // Special case: Login walls are not 404s but they aren't the profile either
         if (url.includes("instagram.com") && lowerText.includes("login")) return false;
         return true;
       }
@@ -87,8 +99,8 @@ export async function searchUsernames(
     results[p] = { exactMatch: null, found: [] };
   });
 
-  // STEP 1: LITERAL MATCH SCAN (EXACT INPUT FIRST)
-  // This is the user's primary requirement.
+  // STEP 1: LITERAL MATCH SCAN (HIGHEST PRIORITY)
+  // We run this first and await it to ensure it's prioritized.
   const exactTasks = platforms.map(async (platform) => {
     const url = PLATFORMS[platform].replace('{}', username);
     const exists = await profileExists(url);
@@ -100,6 +112,7 @@ export async function searchUsernames(
   await Promise.allSettled(exactTasks);
 
   // STEP 2: VARIATION SCAN
+  // Only proceed with variations after literal scan is complete.
   const variantTasks = platforms.flatMap(platform => 
     variations
       .filter(v => v !== username)
