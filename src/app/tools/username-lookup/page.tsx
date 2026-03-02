@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserSearch, LoaderCircle, CheckCircle, Search, ChevronDown, Check, Info, ExternalLink } from "lucide-react";
+import { UserSearch, LoaderCircle, CheckCircle, Search, ChevronDown, Check, Info, ExternalLink, ShieldCheck, UserCheck } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,11 +84,18 @@ export default function UsernameLookupPage() {
     setLoading(false);
   };
   
-  const ResultItem = ({ label, value }: { label: string, value: string }) => (
-    <div className="flex items-center justify-between gap-4 text-sm py-2.5 px-3 group bg-background/20 rounded-md border border-border/10 hover:border-primary/30 transition-all hover:bg-primary/5">
+  const ResultItem = ({ label, value, isExact }: { label: string, value: string, isExact?: boolean }) => (
+    <div className={`flex items-center justify-between gap-4 text-sm py-2.5 px-3 group bg-background/20 rounded-md border transition-all ${isExact ? 'border-primary shadow-sm shadow-primary/20 bg-primary/5' : 'border-border/10 hover:border-primary/30 hover:bg-primary/5'}`}>
       <div className="flex items-center gap-2 overflow-hidden">
-        <CheckCircle className="size-4 text-primary shrink-0" />
-        <span className="font-mono text-primary/90 font-bold truncate">{label}</span>
+        {isExact ? (
+           <UserCheck className="size-4 text-primary shrink-0" />
+        ) : (
+          <CheckCircle className="size-4 text-primary shrink-0" />
+        )}
+        <div className="flex flex-col truncate">
+           <span className="font-mono text-primary/90 font-bold truncate">{label}</span>
+           {isExact && <span className="text-[10px] text-primary uppercase font-bold tracking-tighter">Literal Match</span>}
+        </div>
       </div>
       <a 
         href={value} 
@@ -96,26 +103,27 @@ export default function UsernameLookupPage() {
         rel="noopener noreferrer" 
         className="flex items-center gap-1.5 text-accent text-xs font-semibold hover:underline shrink-0"
       >
-        View Profile <ExternalLink className="size-3" />
+        Open Profile <ExternalLink className="size-3" />
       </a>
     </div>
   )
 
   const selectedCount = Object.values(selectedPlatforms).filter(Boolean).length;
+  const totalMatches = results ? Object.values(results).reduce((acc, r) => acc + (r.exactMatch ? 1 : 0) + r.found.length, 0) : 0;
 
   return (
     <AppLayout>
       <ToolPageWrapper
         title="Username Reconnaissance"
-        description="Verify digital signatures across global social and technical registries."
+        description="Verify digital signatures across global registries. Prioritizing exact matches."
         icon={UserSearch}
       >
         <div className="space-y-8">
           <Card className="border-primary/20 bg-card/40 backdrop-blur-md">
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle className="text-xl font-headline">Discovery parameters</CardTitle>
-                <CardDescription>Enter a username or person's name to begin deep-web profile identification.</CardDescription>
+                <CardTitle className="text-xl font-headline">Target Parameters</CardTitle>
+                <CardDescription>Enter the literal username or name. We check your input exactly before searching variations.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -134,7 +142,7 @@ export default function UsernameLookupPage() {
                     {loading ? (
                       <LoaderCircle className="animate-spin" />
                     ) : (
-                      <><UserSearch className="mr-2 size-5" /> Execute Search</>
+                      <><Search className="mr-2 size-5" /> Execute Recon</>
                     )}
                   </Button>
                 </div>
@@ -176,14 +184,14 @@ export default function UsernameLookupPage() {
                     <Card className="bg-background/20 border-border/50 p-4 flex flex-col justify-center">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Label htmlFor="discovery-mode" className="font-headline text-sm font-semibold cursor-pointer">Reconnaissance Mode</Label>
+                                <Label htmlFor="discovery-mode" className="font-headline text-sm font-semibold cursor-pointer">Recon Mode</Label>
                                 <TooltipProvider>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Info className="size-3.5 text-muted-foreground" />
                                         </TooltipTrigger>
                                         <TooltipContent className="max-w-[250px] bg-card border-border text-xs">
-                                            Uses search engines to discover profiles that aren't exact matches but are related to the target name.
+                                            Search Engine Discovery enabled: Finds variants and related profiles.
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -196,7 +204,7 @@ export default function UsernameLookupPage() {
                             />
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed uppercase tracking-wider">
-                            {includeDiscovery ? "Enabled: Deep-web discovery active" : "Disabled: Exact matches only"}
+                            {includeDiscovery ? "Active: Deep-web discovery" : "Inactive: Precise input only"}
                         </p>
                     </Card>
                 </div>
@@ -211,8 +219,8 @@ export default function UsernameLookupPage() {
                 <LoaderCircle className="animate-spin size-12 text-primary absolute top-0 left-0" style={{ animationDuration: '3s' }} />
               </div>
               <div className="text-center space-y-1">
-                <p className="font-headline font-bold text-lg text-primary animate-pulse">Scanning Global Registries</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Filtering false positives...</p>
+                <p className="font-headline font-bold text-lg text-primary animate-pulse">Verifying Digital Presence</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Checking your literal input first...</p>
               </div>
             </div>
           )}
@@ -223,34 +231,45 @@ export default function UsernameLookupPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle className="font-headline text-2xl text-primary">Intelligence Report</CardTitle>
-                        <CardDescription className="text-muted-foreground">Results for: <span className="text-accent font-mono font-bold">"{username}"</span></CardDescription>
+                        <CardDescription className="text-muted-foreground">Target: <span className="text-accent font-mono font-bold">"{username}"</span></CardDescription>
                     </div>
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 h-8 px-4">
-                        {Object.values(results).reduce((acc, r) => acc + r.found.length, 0)} Verified Identities
+                        {totalMatches} Verified Links
                     </Badge>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                 {Object.keys(results).length > 0 && Object.values(results).some(r => r.found.length > 0 || r.discovered.length > 0) ? (
-                  <Accordion type="multiple" defaultValue={Object.keys(results).filter(p => results[p as PlatformKey].found.length > 0 || results[p as PlatformKey].discovered.length > 0)} className="w-full">
+                 {totalMatches > 0 || (includeDiscovery && Object.values(results).some(r => r.discovered.length > 0)) ? (
+                  <Accordion type="multiple" defaultValue={ALL_PLATFORMS} className="w-full">
                     {Object.entries(results).map(([platform, data]) => (
-                      (data.found.length > 0 || data.discovered.length > 0) && (
+                      (data.exactMatch || data.found.length > 0 || data.discovered.length > 0) && (
                         <AccordionItem value={platform} key={platform} className="border-b border-primary/5 last:border-0">
                           <AccordionTrigger className="px-6 py-4 font-headline text-lg hover:no-underline hover:bg-primary/5 transition-colors">
                             <div className="flex items-center gap-4">
                               <span className="font-bold">{platform}</span>
                               <div className="flex gap-2">
-                                  {data.found.length > 0 && <Badge className="bg-primary/80 hover:bg-primary">{data.found.length} Matches</Badge>}
-                                  {includeDiscovery && data.discovered.length > 0 && <Badge variant="outline" className="border-accent/40 text-accent bg-accent/5">{data.discovered.length} Variants</Badge>}
+                                  {data.exactMatch && <Badge className="bg-primary shadow-sm shadow-primary/50">Literal Match Found</Badge>}
+                                  {data.found.length > 0 && <Badge variant="secondary">{data.found.length} Variants</Badge>}
                               </div>
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="px-6 pt-2 pb-6 space-y-6 bg-background/40">
+                            {data.exactMatch && (
+                               <div className="space-y-3">
+                                  <div className="flex items-center gap-2 mb-2">
+                                      <div className="h-px bg-primary/40 flex-grow" />
+                                      <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest px-2">Precise Input Match</h4>
+                                      <div className="h-px bg-primary/40 flex-grow" />
+                                  </div>
+                                  <ResultItem label={data.exactMatch.username} value={data.exactMatch.url} isExact />
+                               </div>
+                            )}
+
                             {data.found.length > 0 && (
                               <div className="space-y-3">
                                 <div className="flex items-center gap-2 mb-2">
                                     <div className="h-px bg-primary/20 flex-grow" />
-                                    <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest px-2">Legitimate Profiles</h4>
+                                    <h4 className="text-[10px] font-bold text-primary/60 uppercase tracking-widest px-2">Platform Variants</h4>
                                     <div className="h-px bg-primary/20 flex-grow" />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -260,11 +279,12 @@ export default function UsernameLookupPage() {
                                 </div>
                               </div>
                             )}
+
                             {data.discovered.length > 0 && includeDiscovery && (
                               <div className="space-y-3">
                                  <div className="flex items-center gap-2 mb-2">
                                     <div className="h-px bg-accent/20 flex-grow" />
-                                    <h4 className="text-[10px] font-bold text-accent uppercase tracking-widest px-2">Discovered Candidates</h4>
+                                    <h4 className="text-[10px] font-bold text-accent uppercase tracking-widest px-2">Search Discovery</h4>
                                     <div className="h-px bg-accent/20 flex-grow" />
                                  </div>
                                  <div className="flex flex-wrap gap-2">
@@ -282,8 +302,8 @@ export default function UsernameLookupPage() {
                 ) : (
                   <div className="py-20 text-center space-y-3">
                       <Search className="size-12 text-muted-foreground mx-auto opacity-20" />
-                      <p className="text-muted-foreground font-headline">Zero verified records identified.</p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Try broader variations or check "Target Platforms" settings.</p>
+                      <p className="text-muted-foreground font-headline font-bold">No verified records identified.</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest">The username appears to be available on checked platforms.</p>
                   </div>
                 )}
               </CardContent>

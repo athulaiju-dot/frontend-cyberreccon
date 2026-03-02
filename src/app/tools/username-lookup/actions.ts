@@ -14,63 +14,63 @@ const PLATFORMS = {
         "profile_url": "https://github.com/{username}",
         "username_pattern": /^[A-Za-z0-9-]{1,39}$/,
         "profile_path_prefix": "/",
-        "error_text": ["Not Found", "404"]
+        "error_text": ["Not Found", "404", "This is not the user you're looking for"]
     },
     "Twitter": {
         "domain": "x.com",
         "profile_url": "https://x.com/{username}",
         "username_pattern": /^[A-Za-z0-9_]{1,15}$/,
         "profile_path_prefix": "/",
-        "error_text": ["this account doesn't exist", "page doesn't exist"]
+        "error_text": ["this account doesn't exist", "page doesn't exist", "Account suspended"]
     },
     "Reddit": {
         "domain": "reddit.com",
         "profile_url": "https://www.reddit.com/user/{username}/",
         "username_pattern": /^[A-Za-z0-9-_]{3,20}$/,
         "profile_path_prefix": "/user/",
-        "error_text": ["user not found", "page not found"]
+        "error_text": ["user not found", "page not found", "nobody on reddit goes by that name"]
     },
     "Instagram": {
         "domain": "instagram.com",
         "profile_url": "https://www.instagram.com/{username}/",
         "username_pattern": /^[a-zA-Z0-9._]{1,30}$/,
         "profile_path_prefix": "/",
-        "error_text": ["Sorry, this page isn't available", "Page Not Found"]
+        "error_text": ["Sorry, this page isn't available", "Page Not Found", "content isn't available"]
     },
     "TikTok": {
         "domain": "tiktok.com",
         "profile_url": "https://www.tiktok.com/@{username}",
         "username_pattern": /^[a-zA-Z0-9._]{2,24}$/,
         "profile_path_prefix": "/@",
-        "error_text": ["Couldn't find this account"]
+        "error_text": ["Couldn't find this account", "This account is private"]
     },
     "Twitch": {
         "domain": "twitch.tv",
         "profile_url": "https://www.twitch.tv/{username}",
         "username_pattern": /^[a-zA-Z0-9_]{4,25}$/,
         "profile_path_prefix": "/",
-        "error_text": ["content is unavailable", "not found"]
+        "error_text": ["content is unavailable", "not found", "unless you've got a time machine"]
     },
     "Facebook": {
         "domain": "facebook.com",
         "profile_url": "https://www.facebook.com/{username}",
         "username_pattern": /^[A-Za-z0-9.-]{1,50}$/,
         "profile_path_prefix": "/",
-        "error_text": ["This content isn't available", "page not found"]
+        "error_text": ["This content isn't available", "page not found", "The link you followed may be broken"]
     },
     "LinkedIn": {
         "domain": "linkedin.com",
         "profile_url": "https://www.linkedin.com/in/{username}/",
         "username_pattern": /^[A-Za-z0-9-]+$/,
         "profile_path_prefix": "/in/",
-        "error_text": ["Page not found", "404"]
+        "error_text": ["Page not found", "404", "Profile Not Found"]
     },
     "YouTube": {
         "domain": "youtube.com",
         "profile_url": "https://www.youtube.com/@{username}",
         "username_pattern": /^[@A-Za-z0-9_\-.]{3,60}$/,
         "profile_path_prefix": "/@",
-        "error_text": ["404 Not Found", "This page isn't available"]
+        "error_text": ["404 Not Found", "This page isn't available", "This channel does not exist"]
     },
     "Steam": {
         "domain": "steamcommunity.com",
@@ -85,12 +85,15 @@ export type PlatformKey = keyof typeof PLATFORMS;
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
-function generateVariations(seed: string, max_count = 150): string[] {
+/**
+ * Generates smart variations of a seed username.
+ */
+function generateVariations(seed: string, max_count = 100): string[] {
     seed = seed.trim().toLowerCase();
     const variants = new Set<string>();
 
-    const prefixes = ["", "real", "the", "its", "iam", "official", "mr", "mrs", "dev", "cyber", "orig", "true"];
-    const suffixes = ["", "hq", "official", "dev", "cyber", "x", "pro", "007", "123", "01", "99", "me", "live"];
+    const prefixes = ["", "real", "the", "its", "iam", "official", "mr", "mrs", "dev", "cyber"];
+    const suffixes = ["", "hq", "official", "dev", "cyber", "x", "pro", "007", "123", "01"];
     const separators = ["", "_", ".", "-"];
 
     for (const p of prefixes) {
@@ -98,35 +101,17 @@ function generateVariations(seed: string, max_count = 150): string[] {
             for (const s of suffixes) {
                 const v = `${p}${sep}${seed}${s}`.replace(/^[_.-]+|[_.-]+$/g, "");
                 if (v && v.length >= 2) variants.add(v);
-                
-                // Also try with suffix-only
-                if (s) {
-                    const v2 = `${seed}${sep}${s}`.replace(/^[_.-]+|[_.-]+$/g, "");
-                    if (v2 && v2.length >= 2) variants.add(v2);
-                }
             }
-        }
-    }
-
-    // Space separation handling
-    if (seed.includes(" ")) {
-        const parts = seed.split(/\s+/).filter(Boolean);
-        if (parts.length >= 2) {
-            const f = parts[0];
-            const l = parts[parts.length - 1];
-            variants.add(`${f}${l}`);
-            variants.add(`${f}.${l}`);
-            variants.add(`${f}_${l}`);
-            variants.add(`${f[0]}${l}`);
-            variants.add(`${f}${l[0]}`);
-            variants.add(`${f[0]}.${l[0]}`);
         }
     }
 
     return Array.from(variants).slice(0, max_count);
 }
 
-async function verifyAccountExistence(platformKey: PlatformKey, username: string): Promise<{ username: string; url: string } | null> {
+/**
+ * Verifies if a username exists on a specific platform using deep inspection.
+ */
+async function verifyAccountExistence(platformKey: PlatformKey, username: string): Promise<{ username: string; url: string; isExact: boolean } | null> {
     const platform = PLATFORMS[platformKey];
     if (!platform.username_pattern.test(username)) return null;
 
@@ -140,29 +125,21 @@ async function verifyAccountExistence(platformKey: PlatformKey, username: string
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             },
             cache: 'no-store',
-            signal: AbortSignal.timeout(8000)
+            signal: AbortSignal.timeout(10000)
         });
 
-        // If explicitly 404, it's definitely gone
+        // If status is 404, the account is definitely not there
         if (response.status === 404) return null;
 
-        // If status is 200, we must check the body for "soft 404" text
+        // If status is 200, we check for "soft 404s" in the response body
         if (response.ok) {
             const body = await response.text();
             const lowerBody = body.toLowerCase();
             
-            // Check platform specific error strings
             const hasErrorText = platform.error_text.some(text => lowerBody.includes(text.toLowerCase()));
             if (hasErrorText) return null;
 
-            // Basic check for generic "Page not found" or "Login required" patterns that might trigger false positives
-            if (lowerBody.includes("login") && (platformKey === 'Instagram' || platformKey === 'Twitter')) {
-                // If we hit a login wall, it's ambiguous, but usually implies the profile exists (or the site is blocking us)
-                // For a "clean" experience, we'll count it but flag as a match if the URL doesn't look like a generic redirect
-                return { username, url };
-            }
-
-            return { username, url };
+            return { username, url, isExact: false };
         }
 
         return null;
@@ -188,9 +165,7 @@ async function ddgSearchDiscovery(platformKey: PlatformKey, seed: string): Promi
             const href = $(el).attr('href');
             if (href) {
                 const uname = extractUsernameFromUrl(href, platformKey);
-                if (uname && uname.toLowerCase().includes(seed.toLowerCase().replace(/\s+/g, ''))) {
-                    candidates.add(uname);
-                }
+                if (uname) candidates.add(uname);
             }
         });
         return Array.from(candidates);
@@ -217,8 +192,6 @@ function extractUsernameFromUrl(url: string, platformKey: PlatformKey): string |
         
         if (path.startsWith(prefix)) {
             path = path.substring(prefix.length);
-        } else if (prefix !== '/' && !path.includes(prefix)) {
-            return null;
         }
         
         const username = path.split('/').pop()?.replace(/^@/, '') || '';
@@ -231,6 +204,7 @@ function extractUsernameFromUrl(url: string, platformKey: PlatformKey): string |
 
 export type UsernameSearchResults = {
     [platform: string]: {
+        exactMatch: { username: string; url: string } | null;
         found: { username: string; url: string }[];
         discovered: string[];
     };
@@ -243,37 +217,43 @@ export async function searchUsernames(
 ): Promise<UsernameSearchResults> {
 
     const results: UsernameSearchResults = {};
-    const variations = [seed, ...generateVariations(seed)];
+    const variations = generateVariations(seed);
 
-    // Initialize results object
     platforms.forEach(p => {
-        results[p] = { found: [], discovered: [] };
+        results[p] = { exactMatch: null, found: [], discovered: [] };
     });
 
     const tasks = platforms.flatMap(platform => [
-        // Exact checks
+        // 1. ALWAYS check exact seed first
+        verifyAccountExistence(platform, seed).then(res => {
+            if (res) results[platform].exactMatch = { username: res.username, url: res.url };
+        }),
+        // 2. Check variations
         ...variations.map(u => verifyAccountExistence(platform, u).then(res => {
-            if (res) results[platform].found.push(res);
+            if (res && res.username.toLowerCase() !== seed.toLowerCase()) {
+                results[platform].found.push({ username: res.username, url: res.url });
+            }
         })),
-        // Discovery
+        // 3. Search Engine Discovery
         ...(includeDiscovery ? [ddgSearchDiscovery(platform, seed).then(res => {
-            results[platform].discovered = res;
+            results[platform].discovered = res.filter(d => d.toLowerCase() !== seed.toLowerCase());
         })] : [])
     ]);
 
     await Promise.allSettled(tasks);
 
-    // Post-processing: Deduplicate and Sort
+    // Clean up results
     platforms.forEach(p => {
         const seen = new Set<string>();
+        if (results[p].exactMatch) seen.add(results[p].exactMatch!.username.toLowerCase());
+
         results[p].found = results[p].found.filter(item => {
             if (seen.has(item.username.toLowerCase())) return false;
             seen.add(item.username.toLowerCase());
             return true;
-        }).sort((a, b) => a.username.length - b.username.length);
+        });
 
-        const foundSet = new Set(results[p].found.map(f => f.username.toLowerCase()));
-        results[p].discovered = results[p].discovered.filter(d => !foundSet.has(d.toLowerCase()));
+        results[p].discovered = results[p].discovered.filter(d => !seen.has(d.toLowerCase()));
     });
 
     return results;
