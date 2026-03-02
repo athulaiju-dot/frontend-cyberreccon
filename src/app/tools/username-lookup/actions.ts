@@ -35,31 +35,30 @@ async function profileExists(url: string): Promise<boolean> {
     const response = await fetch(url, {
       headers: HEADERS,
       cache: 'no-store',
-      signal: AbortSignal.timeout(10000) // Slightly longer timeout for server-side fetches
+      signal: AbortSignal.timeout(8000)
     });
-
-    const lowerText = (await response.text()).toLowerCase();
 
     // 1. Check for 404 status (standard)
     if (response.status === 404) return false;
 
     // 2. Logic from your script: Status 200 AND "not found" not in body
     if (response.status === 200) {
+      const lowerText = (await response.text()).toLowerCase();
+      
       if (lowerText.includes("not found")) return false;
       if (lowerText.includes("page not found")) return false;
       if (lowerText.includes("doesn't exist")) return false;
       
-      // Special case for Instagram/Twitter: If it redirects to a login wall, it means the profile exists
-      if (lowerText.includes("login") || lowerText.includes("log in")) return true;
-      
+      // If we got a 200 and didn't find "not found" text, it's a match!
       return true;
     }
     
-    // Redirects (301, 302) usually indicate a profile exists or a login wall
+    // Redirects (301, 302) often indicate a profile exists (e.g. redirecting to login wall)
     if (response.status === 301 || response.status === 302) return true;
 
     return false;
   } catch (e) {
+    // If request fails (timeout/block), assume it doesn't exist to prevent false positives
     return false;
   }
 }
@@ -102,7 +101,6 @@ export async function searchUsernames(
   const cleanUsername = username.trim();
 
   // STEP 1: LITERAL MATCH SCAN (ABSOLUTE HIGHEST PRIORITY)
-  // We check exactly what you typed first.
   const exactTasks = platforms.map(async (platform) => {
     const pattern = PLATFORMS[platform];
     const url = pattern.replace('{}', cleanUsername);
@@ -113,7 +111,7 @@ export async function searchUsernames(
     }
   });
 
-  // Await Literal Matches first
+  // Await Literal Matches first to ensure they are found
   await Promise.allSettled(exactTasks);
 
   // STEP 2: VARIATION SCAN (SECONDARY RECON)

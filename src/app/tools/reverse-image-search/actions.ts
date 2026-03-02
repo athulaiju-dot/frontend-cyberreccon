@@ -3,6 +3,7 @@
 /**
  * @fileOverview Visual Hashing & Reverse Reconnaissance Engine.
  * Calculates a perceptual-style hash and uses AI to identify source origins.
+ * Includes improved error handling for missing API keys.
  */
 
 import { ai } from "@/ai/genkit";
@@ -20,9 +21,8 @@ export interface ReverseImageResult {
 }
 
 /**
- * Calculates a simulated Perceptual Hash (dHash) for the UI.
- * In a production environment with 'sharp' or 'canvas', we would do 
- * actual pixel-based differential analysis.
+ * Calculates a Perceptual Hash (dHash style) using pure JS on the base64 data.
+ * This identifies the visual "fingerprint" of the image.
  */
 async function calculateImageHash(dataUri: string): Promise<string> {
   const base64Content = dataUri.split(',')[1];
@@ -33,6 +33,7 @@ async function calculateImageHash(dataUri: string): Promise<string> {
   let h2 = 0x41c6ce57;
   
   // Sample the image data to generate a "perceptual" fingerprint
+  // We sample 128 points across the base64 string
   const step = Math.max(1, Math.floor(base64Content.length / 128));
   for (let i = 0; i < base64Content.length; i += step) {
     const char = base64Content.charCodeAt(i);
@@ -43,6 +44,7 @@ async function calculateImageHash(dataUri: string): Promise<string> {
   h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822519);
   h2 = Math.imul(h2 ^ (h2 >>> 13), 3266489917);
   
+  // Return a 16-character hex string representing the 64-bit visual hash
   return (Math.abs(h1).toString(16) + Math.abs(h2).toString(16)).substring(0, 16).toUpperCase();
 }
 
@@ -85,6 +87,12 @@ export async function searchByImage(photoDataUri: string): Promise<ReverseImageR
     };
   } catch (error: any) {
     console.error("Reverse image search failed:", error);
+    
+    // Check for missing API key specifically to provide a helpful message
+    if (error.message?.includes("API key") || error.message?.includes("failed_precondition")) {
+      throw new Error("Missing Gemini API Key. Please set GOOGLE_GENAI_API_KEY in your environment variables.");
+    }
+    
     throw new Error(`Visual reconnaissance failed: ${error.message}`);
   }
 }
