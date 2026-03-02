@@ -1,20 +1,21 @@
 'use server';
 
 /**
- * @fileOverview Username Reconnaissance Engine (Server-Side).
- * STRICTLY prioritizes Literal Matches using logic from user's Python script.
+ * @fileOverview High-Performance Username Reconnaissance Engine.
+ * STRICTLY PRIORITIZES literal matches using your Python script logic.
+ * Bypasses CORS by executing on the server.
  */
 
 const PLATFORMS = {
-  "Instagram": "https://www.instagram.com/{}",
-  "Twitter": "https://twitter.com/{}",
-  "GitHub": "https://github.com/{}",
-  "TikTok": "https://www.tiktok.com/@{}",
-  "YouTube": "https://www.youtube.com/@{}",
-  "Facebook": "https://www.facebook.com/{}",
-  "Reddit": "https://www.reddit.com/user/{}",
-  "Pinterest": "https://www.pinterest.com/{}",
-  "Medium": "https://medium.com/@{}"
+  "Instagram": "https://www.instagram.com/{}/",
+  "Twitter": "https://twitter.com/{}/",
+  "GitHub": "https://github.com/{}/",
+  "TikTok": "https://www.tiktok.com/@{}/",
+  "YouTube": "https://www.youtube.com/@{}/",
+  "Facebook": "https://www.facebook.com/{}/",
+  "Reddit": "https://www.reddit.com/user/{}/",
+  "Pinterest": "https://www.pinterest.com/{}/",
+  "Medium": "https://medium.com/@{}/"
 } as const;
 
 export type PlatformKey = keyof typeof PLATFORMS;
@@ -25,31 +26,31 @@ const HEADERS = {
 };
 
 /**
- * Core validation logic exactly as defined in the User's Python script.
- * Runs on server to bypass CORS.
+ * Core validation logic exactly as defined in your Python script.
+ * Returns true if status is 200 and 'not found' is absent from text.
  */
 async function profileExists(url: string): Promise<boolean> {
   try {
     const response = await fetch(url, {
       headers: HEADERS,
       cache: 'no-store',
-      // Abort after 10 seconds to keep the scan snappy
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(8000)
     });
 
-    // Python logic: Status 200 AND "not found" not in body
     if (response.status === 200) {
       const text = await response.text();
       const lowerText = text.toLowerCase();
       
-      // Strict "not found" check from your Python script
+      // Logic from your script: Status 200 AND "not found" not in body
       if (lowerText.includes("not found")) return false;
       
-      // Special check for platform login-walls (often a sign of an existing profile)
-      // but if the text says "page not found" on the login page, we handle it above.
+      // Additional safety for login-walls (common for active profiles on IG/Twitter)
+      if (lowerText.includes("login") && (url.includes("instagram.com") || url.includes("twitter.com"))) return true;
+      
       return true;
     }
     
+    // Some platforms return 404 correctly, but some might return 302/redirect
     return false;
   } catch (e) {
     return false;
@@ -57,7 +58,7 @@ async function profileExists(url: string): Promise<boolean> {
 }
 
 /**
- * Variation logic exactly as defined in the User's Python script.
+ * Variation logic exactly as defined in your Python script.
  */
 function generateVariations(username: string): string[] {
   const variants = new Set<string>([
@@ -86,31 +87,33 @@ export async function searchUsernames(
 ): Promise<UsernameSearchResults> {
   const results: UsernameSearchResults = {};
   
-  // Initialize results object
+  // Initialize results
   platforms.forEach(p => {
     results[p] = { exactMatch: null, found: [] };
   });
 
+  const cleanUsername = username.trim();
+
   // STEP 1: LITERAL MATCH SCAN (ABSOLUTE HIGHEST PRIORITY)
-  // We execute this first to ensure it is the primary focus.
+  // We check exactly what you typed first.
   const exactTasks = platforms.map(async (platform) => {
     const pattern = PLATFORMS[platform];
-    const url = pattern.replace('{}', username);
+    const url = pattern.replace('{}', cleanUsername);
     
     const exists = await profileExists(url);
     if (exists) {
-      results[platform].exactMatch = { username, url };
+      results[platform].exactMatch = { username: cleanUsername, url };
     }
   });
 
-  // Await the literal matches first
+  // Await Literal Matches first to ensure they are available for the UI
   await Promise.allSettled(exactTasks);
 
   // STEP 2: VARIATION SCAN (SECONDARY RECON)
-  const variations = generateVariations(username);
+  const variations = generateVariations(cleanUsername);
   const variantTasks = platforms.flatMap(platform => 
     variations
-      .filter(v => v !== username)
+      .filter(v => v !== cleanUsername)
       .map(async (variant) => {
         const pattern = PLATFORMS[platform];
         const url = pattern.replace('{}', variant);

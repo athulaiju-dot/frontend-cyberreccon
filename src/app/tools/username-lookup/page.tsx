@@ -85,7 +85,7 @@ export default function UsernameLookupPage() {
     <AppLayout>
       <ToolPageWrapper
         title="Username Reconnaissance"
-        description="Priority scanning for literal username input across global social registries."
+        description="High-priority literal input scanning across global social registries."
         icon={UserSearch}
       >
         <div className="space-y-8">
@@ -93,7 +93,7 @@ export default function UsernameLookupPage() {
             <form onSubmit={handleSubmit}>
               <CardHeader>
                 <CardTitle className="text-xl font-headline">Recon Parameters</CardTitle>
-                <CardDescription>Your exact input "{username || '...'}" is verified first.</CardDescription>
+                <CardDescription>Your literal input is verified FIRST before any variations.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -110,7 +110,7 @@ export default function UsernameLookupPage() {
                   </div>
                   <Button type="submit" disabled={loading || !username} className="h-12 w-full sm:w-auto px-8 shadow-lg shadow-primary/20">
                     {loading ? (
-                      <LoaderCircle className="animate-spin" />
+                      <LoaderCircle className="animate-spin size-5" />
                     ) : (
                       <><Search className="mr-2 size-5" /> Execute Scan</>
                     )}
@@ -140,17 +140,17 @@ export default function UsernameLookupPage() {
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <LoaderCircle className="animate-spin size-12 text-primary" />
               <div className="text-center">
-                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Scanning Literal Match</p>
-                <p className="text-xs text-muted-foreground uppercase">Verifying exact input across registries...</p>
+                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Scanning Literal Input</p>
+                <p className="text-xs text-muted-foreground uppercase">Executing server-side bypass for "{username}"...</p>
               </div>
             </div>
           )}
 
           {results && (
             <div className="space-y-6">
-              {/* LITERAL MATCHES - TOP PRIORITY SECTION */}
+              {/* LITERAL MATCHES - ABSOLUTE HIGHEST PRIORITY */}
               {totalExactMatches > 0 ? (
-                <Card className="border-primary bg-primary/5 shadow-2xl shadow-primary/5 overflow-hidden ring-1 ring-primary/20">
+                <Card className="border-primary bg-primary/10 shadow-2xl shadow-primary/10 overflow-hidden ring-1 ring-primary/40">
                   <CardHeader className="border-b border-primary/20 py-4 bg-primary/10">
                     <div className="flex items-center gap-2">
                       <UserCheck className="size-6 text-primary" />
