@@ -4,8 +4,8 @@ import * as cheerio from 'cheerio';
 import { URL } from 'url';
 
 /**
- * @fileOverview Backend logic for Sherlock-style username search.
- * Includes variation generation and DuckDuckGo discovery.
+ * @fileOverview Refined Sherlock-style username search.
+ * Includes variation generation and DuckDuckGo discovery for reconnaissance.
  */
 
 const PLATFORMS = {
@@ -31,6 +31,18 @@ const PLATFORMS = {
         "domain": "instagram.com",
         "profile_url": "https://www.instagram.com/{username}/",
         "username_pattern": /^[a-zA-Z0-9._]{1,30}$/,
+        "profile_path_prefix": "/"
+    },
+    "TikTok": {
+        "domain": "tiktok.com",
+        "profile_url": "https://www.tiktok.com/@{username}",
+        "username_pattern": /^[a-zA-Z0-9._]{2,24}$/,
+        "profile_path_prefix": "/@"
+    },
+    "Twitch": {
+        "domain": "twitch.tv",
+        "profile_url": "https://www.twitch.tv/{username}",
+        "username_pattern": /^[a-zA-Z0-9_]{4,25}$/,
         "profile_path_prefix": "/"
     },
     "Facebook": {
@@ -68,10 +80,16 @@ const PLATFORMS = {
         "profile_url": "https://www.quora.com/profile/{username}",
         "username_pattern": /^[A-Za-z0-9\-._ ]{1,60}$/,
         "profile_path_prefix": "/profile/"
+    },
+    "Steam": {
+        "domain": "steamcommunity.com",
+        "profile_url": "https://steamcommunity.com/id/{username}",
+        "username_pattern": /^[A-Za-z0-9_-]{2,32}$/,
+        "profile_path_prefix": "/id/"
     }
 } as const;
 
-type PlatformKey = keyof typeof PLATFORMS;
+export type PlatformKey = keyof typeof PLATFORMS;
 
 const UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36";
 
@@ -79,20 +97,20 @@ function generateVariations(seed: string, max_count = 120): string[] {
     seed = seed.trim();
     const variants = new Set<string>();
 
-    const prefixes = ["", "real", "the", "its", "iam", "official", "mr", "mrs"];
-    const suffixes = ["", "", ".", "_", "_x", "_dev", "_cyber", "007", "123", "01"];
+    const prefixes = ["", "real", "the", "its", "iam", "official", "mr", "mrs", "dev", "cyber"];
+    const suffixes = ["", ".", "_", "_x", "_dev", "_cyber", "007", "123", "01", "hq", "official"];
     const pads = ["", "_", ".", "-"];
 
     for (const p of prefixes) {
         for (const pad of pads) {
             for (const s of suffixes) {
                 const v = `${p}${pad}${seed}${s}`.replace(/^[_.-]+|[_.-]+$/g, "");
-                if (v) variants.add(v.toLowerCase());
+                if (v && v.length >= 2) variants.add(v.toLowerCase());
             }
         }
     }
 
-    for (let n = 1; n <= 20; n++) {
+    for (let n = 1; n <= 30; n++) {
         variants.add(`${seed}${n}`);
         variants.add(`${seed}_${n}`);
         variants.add(`${seed}.${n}`);
@@ -131,8 +149,9 @@ function extractUsernameFromUrl(url: string, platformKey: PlatformKey): string |
         }
         
         const parsed = new URL(cleanUrl);
+        const domain = PLATFORMS[platformKey].domain;
 
-        if (!parsed.hostname.includes(PLATFORMS[platformKey].domain)) {
+        if (!parsed.hostname.includes(domain)) {
             return null;
         }
 
@@ -143,14 +162,12 @@ function extractUsernameFromUrl(url: string, platformKey: PlatformKey): string |
         
         if (path.startsWith(prefix)) {
             path = path.substring(prefix.length);
-        } else if ((platformKey === 'YouTube' || platformKey === 'Medium') && path.startsWith('/@')) {
-             // Already handled by prefix
-        } else if (prefix !== '/') {
+        } else if (prefix !== '/' && !path.includes(prefix)) {
             return null;
         }
         
         let username = path.split('/').pop() || '';
-        if ((platformKey === 'YouTube' || platformKey === 'Medium') && username.startsWith('@')) {
+        if (username.startsWith('@')) {
             username = username.substring(1);
         }
         
@@ -173,10 +190,15 @@ async function headExists(url: string, timeout = 12000): Promise<boolean> {
     try {
         const response = await fetch(url, {
             method: 'GET',
-            headers: { 'User-Agent': UA, 'Accept-Language': 'en' },
+            headers: { 
+                'User-Agent': UA, 
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+            },
             signal: AbortSignal.timeout(timeout),
             redirect: 'follow'
         });
+        // Common status codes that indicate existence for social profiles
         return [200, 301, 302, 401, 403].includes(response.status);
     } catch (error) {
         return false;
@@ -192,7 +214,7 @@ async function checkExactUsername(platformKey: PlatformKey, username: string): P
     return exists ? { username, url } : null;
 }
 
-async function ddgSearchUsernames(platformKey: PlatformKey, seed: string, maxHits = 20): Promise<string[]> {
+async function ddgSearchUsernames(platformKey: PlatformKey, seed: string, maxHits = 25): Promise<string[]> {
     const domain = PLATFORMS[platformKey].domain;
     const q = `site:${domain} "${seed}"`;
     const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(q)}`;
@@ -211,7 +233,7 @@ async function ddgSearchUsernames(platformKey: PlatformKey, seed: string, maxHit
             const href = $(el).attr('href');
             if (href && candidates.size < maxHits) {
                 const username = extractUsernameFromUrl(href, platformKey);
-                if (username) {
+                if (username && username.toLowerCase().includes(seed.toLowerCase().replace(/\s+/g, ''))) {
                     candidates.add(username);
                 }
             }
@@ -281,8 +303,8 @@ export async function searchUsernames(
             return a.username.localeCompare(b.username);
         });
 
-        const foundSet = new Set(results[p].found.map(f => f.username));
-        results[p].discovered = results[p].discovered.filter(d => !foundSet.has(d));
+        const foundSet = new Set(results[p].found.map(f => f.username.toLowerCase()));
+        results[p].discovered = results[p].discovered.filter(d => !foundSet.has(d.toLowerCase()));
     }
 
     return results;
