@@ -10,7 +10,7 @@ export async function enumerateSubdomains(domain: string): Promise<SubdomainResu
   if (!domain) throw new Error("Target domain is required.");
 
   try {
-    // Using crt.sh public CT log API
+    // Using crt.sh public Certificate Transparency log API
     const response = await fetch(`https://crt.sh/?q=%.${domain}&output=json`, {
         headers: { 'User-Agent': 'CyberTrace-OSINT' }
     });

@@ -6,7 +6,6 @@ import {
   Network,
   Mail,
   type LucideIcon,
-  Fingerprint,
   ShieldAlert,
   Terminal,
   Layers,
@@ -57,21 +56,21 @@ export const tools: Tool[] = [
     description: "Gather information associated with an email address.",
   },
   {
-    name: "Clickjacking Check",
+    name: "Clickjacking Checker",
     href: "/tools/clickjacking",
     icon: ShieldAlert,
-    description: "Analyze if a website is vulnerable to UI redressing attacks.",
+    description: "Verify if a web application is protected against framing-based attacks.",
   },
   {
     name: "Host Header Tester",
     href: "/tools/host-header",
     icon: Terminal,
-    description: "Test for Host Header Injection vulnerabilities.",
+    description: "Inject custom Host headers to identify vulnerabilities in server configuration.",
   },
   {
     name: "Subdomain Enum",
     href: "/tools/subdomain-enum",
     icon: Layers,
-    description: "Discover subdomains using public transparency logs.",
+    description: "Search Certificate Transparency logs to discover subdomains for a target domain.",
   },
 ];
