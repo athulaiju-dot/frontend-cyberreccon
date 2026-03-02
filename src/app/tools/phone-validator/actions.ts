@@ -1,6 +1,6 @@
 'use server';
 
-import { parsePhoneNumberFromString, getCountries, type CountryCode } from 'libphonenumber-js';
+import { parsePhoneNumberFromString, getCountries } from 'libphonenumber-js';
 
 export interface PhoneValidationResult {
   input: string;
@@ -17,10 +17,9 @@ export interface PhoneValidationResult {
 }
 
 /**
- * Smart Detection Logic:
+ * Smart Detection Logic based on your Python script requirements:
  * If no '+' prefix is found, we iterate through all known countries 
- * to find a valid match, simulating the 'None' region behavior but with 
- * automatic discovery.
+ * to find a valid match, simulating the automatic country discovery.
  */
 function attemptSmartParse(phone: string) {
   const cleanPhone = phone.replace(/\D/g, '');
@@ -36,14 +35,13 @@ function attemptSmartParse(phone: string) {
   if (parsedWithPlus?.isValid()) return parsedWithPlus;
 
   // 3. Iterate through all countries to see if it's a valid national number anywhere
-  // This handles inputs like "9876543210" without codes.
   const countries = getCountries();
   for (const country of countries) {
     const p = parsePhoneNumberFromString(cleanPhone, country);
     if (p?.isValid()) return p;
   }
 
-  // 4. Fallback: try parsing as-is even if invalid to get partial info
+  // 4. Fallback: try parsing as-is to get partial info
   return parsePhoneNumberFromString(phone.startsWith('+') ? phone : `+${cleanPhone}`);
 }
 
@@ -64,8 +62,7 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       ? new Intl.DisplayNames(['en'], { type: 'region' }).of(phoneNumber.country) 
       : "Not Found";
 
-    // Carrier names (e.g., "Verizon") are not bundled in standard JS libs to save space.
-    // We provide the Service Type which is the reliable 'carrier' info available locally.
+    // Carrier names are usually the Service Type (Mobile, Fixed Line, etc.)
     const serviceType = type ? type.replace(/_/g, ' ') : "Not Found";
 
     return {
