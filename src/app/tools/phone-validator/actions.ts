@@ -1,9 +1,6 @@
 'use server';
 
-import { parsePhoneNumber, AsYouType, CountryCode } from 'libphonenumber-js';
-
-// Note: Carrier information is not reliably available with libphonenumber-js.
-// It has been removed to avoid providing inaccurate "Unknown" data.
+import { parsePhoneNumberFromString, type CountryCode, getCountries } from 'libphonenumber-js';
 
 export interface PhoneValidationResult {
   input: string;
@@ -13,24 +10,34 @@ export interface PhoneValidationResult {
   valid?: boolean;
   possible?: boolean;
   country?: string;
+  countryCode?: string;
   type?: string;
+  carrier?: string;
   error?: string;
 }
 
-// A simple heuristic to guess the default country if not an international number
-function guessCountry(phone: string): CountryCode | undefined {
-    // This is a very basic implementation.
-    // In a real-world app, you might use the user's IP/locale.
-    // Defaulting to 'US' if no other pattern matches.
-    if (phone.startsWith('+')) {
-      // libphonenumber-js handles this automatically if a country code is present
-      return undefined;
-    }
-    if (phone.startsWith('44')) return 'GB';
-    if (phone.startsWith('91')) return 'IN';
-    return 'US';
-}
+/**
+ * Smart Guess Logic: 
+ * If no '+' prefix is found, we try to match the number against all known countries 
+ * to see where it fits as a valid international number or a valid national number.
+ */
+function attemptSmartParse(phone: string) {
+  const cleanPhone = phone.replace(/\D/g, '');
+  
+  // 1. Try parsing as-is (with + if present)
+  let parsed = parsePhoneNumberFromString(phone.startsWith('+') ? phone : `+${cleanPhone}`);
+  if (parsed?.isValid()) return parsed;
 
+  // 2. Iterate through all countries to see if it's a valid national number in any of them
+  const countries = getCountries();
+  for (const country of countries) {
+    const p = parsePhoneNumberFromString(cleanPhone, country);
+    if (p?.isValid()) return p;
+  }
+
+  // 3. Fallback to a basic parse even if invalid to get partial info
+  return parsePhoneNumberFromString(phone.startsWith('+') ? phone : `+${cleanPhone}`);
+}
 
 export async function validatePhone(phone: string): Promise<PhoneValidationResult> {
   if (!phone) {
@@ -38,13 +45,17 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
   }
 
   try {
-    // Let parsePhoneNumber handle country detection if possible (e.g. from + country code)
-    const phoneNumber = parsePhoneNumber(phone, guessCountry(phone));
+    const phoneNumber = attemptSmartParse(phone);
     
     if (!phoneNumber) {
-         throw new Error("Could not parse phone number. Check format (e.g., +15551234567).");
+      throw new Error("Could not parse phone number structure.");
     }
     
+    // Carrier info in libphonenumber-js is limited to the 'type' (Mobile/Fixed)
+    // Real carrier lookup usually requires a paid API.
+    const type = phoneNumber.getType();
+    const isMobile = type === 'MOBILE' || type === 'FIXED_LINE_OR_MOBILE';
+
     return {
       input: phone,
       e164: phoneNumber.format('E.164'),
@@ -53,15 +64,14 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       valid: phoneNumber.isValid(),
       possible: phoneNumber.isPossible(),
       country: phoneNumber.country ? new Intl.DisplayNames(['en'], { type: 'region' }).of(phoneNumber.country) : "Unknown",
-      type: phoneNumber.getType(),
+      countryCode: phoneNumber.country,
+      type: type || "UNKNOWN",
+      carrier: isMobile ? "Mobile Network Detected" : "Landline/Fixed Line Detected",
     };
   } catch (error: any) {
-    // The library throws an error for invalid numbers, which we can catch.
     return {
       input: phone,
-      error: error.message === 'NOT_A_NUMBER' 
-        ? "Invalid number. Please check the format (e.g., +15551234567)."
-        : "Failed to validate phone number. Please check the format (e.g., +15551234567).",
+      error: "Validation failed. Please ensure the number is correct.",
     };
   }
 }

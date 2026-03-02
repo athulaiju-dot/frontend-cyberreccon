@@ -23,10 +23,11 @@ export type PlatformKey = keyof typeof PLATFORMS;
 const HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
 };
 
 /**
- * Core validation logic exactly as defined in your Python script.
+ * Core validation logic based on your Python script.
  * Returns true if status is 200 and 'not found' is absent from text.
  */
 async function profileExists(url: string): Promise<boolean> {
@@ -34,23 +35,29 @@ async function profileExists(url: string): Promise<boolean> {
     const response = await fetch(url, {
       headers: HEADERS,
       cache: 'no-store',
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(10000) // Slightly longer timeout for server-side fetches
     });
 
+    const lowerText = (await response.text()).toLowerCase();
+
+    // 1. Check for 404 status (standard)
+    if (response.status === 404) return false;
+
+    // 2. Logic from your script: Status 200 AND "not found" not in body
     if (response.status === 200) {
-      const text = await response.text();
-      const lowerText = text.toLowerCase();
-      
-      // Logic from your script: Status 200 AND "not found" not in body
       if (lowerText.includes("not found")) return false;
+      if (lowerText.includes("page not found")) return false;
+      if (lowerText.includes("doesn't exist")) return false;
       
-      // Additional safety for login-walls (common for active profiles on IG/Twitter)
-      if (lowerText.includes("login") && (url.includes("instagram.com") || url.includes("twitter.com"))) return true;
+      // Special case for Instagram/Twitter: If it redirects to a login wall, it means the profile exists
+      if (lowerText.includes("login") || lowerText.includes("log in")) return true;
       
       return true;
     }
     
-    // Some platforms return 404 correctly, but some might return 302/redirect
+    // Redirects (301, 302) usually indicate a profile exists or a login wall
+    if (response.status === 301 || response.status === 302) return true;
+
     return false;
   } catch (e) {
     return false;
@@ -106,7 +113,7 @@ export async function searchUsernames(
     }
   });
 
-  // Await Literal Matches first to ensure they are available for the UI
+  // Await Literal Matches first
   await Promise.allSettled(exactTasks);
 
   // STEP 2: VARIATION SCAN (SECONDARY RECON)
