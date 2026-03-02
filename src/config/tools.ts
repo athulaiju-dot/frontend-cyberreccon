@@ -7,6 +7,9 @@ import {
   Mail,
   type LucideIcon,
   Fingerprint,
+  ShieldAlert,
+  Terminal,
+  Layers,
 } from "lucide-react";
 
 export interface Tool {
@@ -52,5 +55,23 @@ export const tools: Tool[] = [
     href: "/tools/email-lookup",
     icon: Mail,
     description: "Gather information associated with an email address.",
+  },
+  {
+    name: "Clickjacking Check",
+    href: "/tools/clickjacking",
+    icon: ShieldAlert,
+    description: "Analyze if a website is vulnerable to UI redressing attacks.",
+  },
+  {
+    name: "Host Header Tester",
+    href: "/tools/host-header",
+    icon: Terminal,
+    description: "Test for Host Header Injection vulnerabilities.",
+  },
+  {
+    name: "Subdomain Enum",
+    href: "/tools/subdomain-enum",
+    icon: Layers,
+    description: "Discover subdomains using public transparency logs.",
   },
 ];
