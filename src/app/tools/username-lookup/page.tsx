@@ -22,7 +22,6 @@ const ALL_PLATFORMS: PlatformKey[] = [
   "Facebook",
   "Reddit",
   "Pinterest",
-  "GitHub-Gist",
   "Medium"
 ];
 
