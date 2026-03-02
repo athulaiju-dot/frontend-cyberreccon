@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Network, LoaderCircle, ShieldInfo, Database, Calendar, Users } from "lucide-react";
+import { Network, LoaderCircle, Shield, Database, Calendar, Users } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,7 +100,7 @@ export default function DomainLookupPage() {
               <Card className="border-primary/50 shadow-xl overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b border-primary/20">
                   <div className="flex items-center gap-2">
-                    <ShieldInfo className="size-6 text-primary" />
+                    <Shield className="size-6 text-primary" />
                     <CardTitle className="text-xl font-headline text-primary">Registration Data (WHOIS)</CardTitle>
                   </div>
                 </CardHeader>
@@ -167,7 +167,7 @@ export default function DomainLookupPage() {
                     </>
                   ) : (
                     <div className="py-10 text-center space-y-2">
-                        <ShieldInfo className="size-12 text-muted-foreground mx-auto opacity-20" />
+                        <Shield className="size-12 text-muted-foreground mx-auto opacity-20" />
                         <p className="text-muted-foreground font-headline font-bold uppercase">No Registry Data Available</p>
                         <p className="text-xs text-muted-foreground">This TLD might not support RDAP lookup or the registry is blocked.</p>
                     </div>
