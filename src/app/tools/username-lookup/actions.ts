@@ -1,9 +1,8 @@
-'use server';
+'use client';
 
 /**
- * @fileOverview Username Reconnaissance Engine (Best of Both).
- * Merges user Python logic (literal-first, simple string detection)
- * with robust TypeScript execution and variation generation.
+ * @fileOverview Username Reconnaissance Engine.
+ * Final implementation prioritizing Literal Matches and using User's Python logic.
  */
 
 const PLATFORMS = {
@@ -15,7 +14,6 @@ const PLATFORMS = {
   "Facebook": "https://www.facebook.com/{}/",
   "Reddit": "https://www.reddit.com/user/{}/",
   "Pinterest": "https://www.pinterest.com/{}/",
-  "GitHub-Gist": "https://gist.github.com/{}",
   "Medium": "https://medium.com/@{}"
 } as const;
 
@@ -27,8 +25,8 @@ const HEADERS = {
 };
 
 /**
- * Implementation of user's profile_exists logic from Python.
- * Simplified to reduce false negatives while maintaining security.
+ * Core validation logic from User's Python script.
+ * Simple but effective: Status 200 and no "not found" text.
  */
 async function profileExists(url: string): Promise<boolean> {
   try {
@@ -38,35 +36,25 @@ async function profileExists(url: string): Promise<boolean> {
       signal: AbortSignal.timeout(10000)
     });
 
-    // logic from user script: status 200 AND absence of "not found" text
+    // Exact logic from user's script
     if (response.status === 200) {
       const text = await response.text();
       const lowerText = text.toLowerCase();
       
-      // Basic check from user script
-      if (!lowerText.includes("not found")) {
-        // Platform specific guard for Instagram/Twitter redirects
-        if (url.includes("instagram.com") && lowerText.includes("login - instagram")) {
-            return false;
-        }
+      // Look for "not found" or "page not found" common strings
+      if (!lowerText.includes("not found") && !lowerText.includes("page unavailable")) {
+        // Special case for Instagram/Twitter login walls which are NOT 404s
+        if (url.includes("instagram.com") && lowerText.includes("login")) return false;
         return true;
       }
     }
     
-    // Status 401/403 often indicates a private profile tht DOES exist
-    if (response.status === 401 || response.status === 403) {
-      return true;
-    }
-
     return false;
   } catch (e) {
     return false;
   }
 }
 
-/**
- * Generates variations from user script.
- */
 function generateVariations(username: string): string[] {
   const variants = new Set<string>([
     username,
@@ -95,13 +83,12 @@ export async function searchUsernames(
   const results: UsernameSearchResults = {};
   const variations = generateVariations(username);
 
-  // Initialize results
   platforms.forEach(p => {
     results[p] = { exactMatch: null, found: [] };
   });
 
-  // STEP 1: CHECK EXACT USERNAME FIRST (HIGHEST PRIORITY)
-  // Logic from user script: check exact input first pass
+  // STEP 1: LITERAL MATCH SCAN (EXACT INPUT FIRST)
+  // This is the user's primary requirement.
   const exactTasks = platforms.map(async (platform) => {
     const url = PLATFORMS[platform].replace('{}', username);
     const exists = await profileExists(url);
@@ -110,13 +97,12 @@ export async function searchUsernames(
     }
   });
 
-  // Wait for the literal match scan to finish first
   await Promise.allSettled(exactTasks);
 
-  // STEP 2: CHECK VARIATIONS (Logic from user script)
+  // STEP 2: VARIATION SCAN
   const variantTasks = platforms.flatMap(platform => 
     variations
-      .filter(v => v !== username) // Skip literal match since checked above
+      .filter(v => v !== username)
       .map(async (variant) => {
         const url = PLATFORMS[platform].replace('{}', variant);
         const exists = await profileExists(url);
