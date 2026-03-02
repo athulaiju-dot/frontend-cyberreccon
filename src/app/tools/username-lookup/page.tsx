@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserSearch, LoaderCircle, Search, ExternalLink, ShieldCheck, UserCheck, AlertCircle } from "lucide-react";
+import { UserSearch, LoaderCircle, Search, ExternalLink, UserCheck, AlertCircle, ShieldCheck } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,11 +45,10 @@ export default function UsernameLookupPage() {
         .map(([platform]) => platform) as PlatformKey[];
 
     try {
-        // Calling the Server Action
-        const searchResults = await searchUsernames(username, activePlatforms);
+        const searchResults = await searchUsernames(username.trim(), activePlatforms);
         setResults(searchResults);
     } catch(error) {
-        console.error("Username search failed:", error);
+        console.error("Username reconnaissance failed:", error);
     }
 
     setLoading(false);
@@ -65,7 +64,7 @@ export default function UsernameLookupPage() {
         )}
         <div className="flex flex-col truncate">
            <span className={`font-mono truncate ${isExact ? 'font-bold text-primary text-base' : 'text-muted-foreground'}`}>{label}</span>
-           {isExact && <span className="text-[10px] text-primary font-bold uppercase tracking-wider">LITERAL INPUT MATCH</span>}
+           {isExact && <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Exact Match Found</span>}
         </div>
       </div>
       <a 
@@ -74,7 +73,7 @@ export default function UsernameLookupPage() {
         rel="noopener noreferrer" 
         className={`flex items-center gap-1.5 font-bold hover:underline shrink-0 ${isExact ? 'text-primary' : 'text-accent'}`}
       >
-        Open Profile <ExternalLink className="size-4" />
+        View Profile <ExternalLink className="size-4" />
       </a>
     </div>
   )
@@ -86,7 +85,7 @@ export default function UsernameLookupPage() {
     <AppLayout>
       <ToolPageWrapper
         title="Username Reconnaissance"
-        description="Verify digital signatures across global registries. Priority checking for literal matches."
+        description="Priority scanning for literal username input across global social registries."
         icon={UserSearch}
       >
         <div className="space-y-8">
@@ -94,7 +93,7 @@ export default function UsernameLookupPage() {
             <form onSubmit={handleSubmit}>
               <CardHeader>
                 <CardTitle className="text-xl font-headline">Recon Parameters</CardTitle>
-                <CardDescription>Your exact input is checked first across all selected platforms.</CardDescription>
+                <CardDescription>Your exact input "{username || '...'}" is verified first.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -141,24 +140,24 @@ export default function UsernameLookupPage() {
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <LoaderCircle className="animate-spin size-12 text-primary" />
               <div className="text-center">
-                <p className="font-headline font-bold text-lg text-primary">Searching literal match...</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-widest">Verifying exact input first</p>
+                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Scanning Literal Match</p>
+                <p className="text-xs text-muted-foreground uppercase">Verifying exact input across registries...</p>
               </div>
             </div>
           )}
 
           {results && (
             <div className="space-y-6">
-              {/* LITERAL MATCHES SECTION - HIGHEST VISIBILITY */}
+              {/* LITERAL MATCHES - TOP PRIORITY SECTION */}
               {totalExactMatches > 0 ? (
-                <Card className="border-primary bg-primary/5 shadow-xl shadow-primary/5 overflow-hidden">
-                  <CardHeader className="border-b border-primary/20 py-4">
+                <Card className="border-primary bg-primary/5 shadow-2xl shadow-primary/5 overflow-hidden ring-1 ring-primary/20">
+                  <CardHeader className="border-b border-primary/20 py-4 bg-primary/10">
                     <div className="flex items-center gap-2">
                       <UserCheck className="size-6 text-primary" />
-                      <CardTitle className="text-xl font-headline text-primary uppercase">Literal Match Found</CardTitle>
+                      <CardTitle className="text-xl font-headline text-primary">Literal Input Matches</CardTitle>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Object.entries(results).map(([platform, data]) => (
                       data.exactMatch && <ResultItem key={platform} label={`${platform}: ${data.exactMatch.username}`} value={data.exactMatch.url} isExact />
                     ))}
@@ -169,19 +168,19 @@ export default function UsernameLookupPage() {
                   <CardHeader className="py-4">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="size-5 text-destructive" />
-                      <CardTitle className="text-lg font-headline text-destructive uppercase">No Literal Match for "{username}"</CardTitle>
+                      <CardTitle className="text-lg font-headline text-destructive uppercase">No Literal Match Found</CardTitle>
                     </div>
                   </CardHeader>
                 </Card>
               )}
 
-              {/* ALL RESULTS ACCORDION */}
+              {/* DETAILED REPORT SECTION */}
               <Card className="bg-card/30 backdrop-blur-xl border-border/50 overflow-hidden shadow-2xl">
                 <CardHeader className="bg-muted/30 border-b border-border/50">
                   <div className="flex items-center justify-between">
-                      <CardTitle className="font-headline text-lg">Detailed Recon Report</CardTitle>
+                      <CardTitle className="font-headline text-lg">Discovery Report</CardTitle>
                       <Badge variant="outline" className="text-primary border-primary">
-                          {totalMatches} Active Profiles Identified
+                          {totalMatches} Active Profiles
                       </Badge>
                   </div>
                 </CardHeader>
@@ -194,8 +193,8 @@ export default function UsernameLookupPage() {
                             <AccordionTrigger className="px-6 py-4 font-headline text-lg hover:no-underline hover:bg-muted/30 transition-colors">
                               <div className="flex items-center gap-4">
                                 <span className="font-bold">{platform}</span>
-                                {data.exactMatch && <Badge className="bg-primary">LITERAL MATCH</Badge>}
-                                {data.found.length > 0 && <Badge variant="secondary">+{data.found.length} Variants</Badge>}
+                                {data.exactMatch && <Badge className="bg-primary text-[10px]">LITERAL MATCH</Badge>}
+                                {data.found.length > 0 && <Badge variant="secondary" className="text-[10px]">+{data.found.length} Variants</Badge>}
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="px-6 pt-2 pb-6 space-y-4 bg-background/20">
@@ -217,8 +216,7 @@ export default function UsernameLookupPage() {
                   ) : (
                     <div className="py-20 text-center space-y-3">
                         <AlertCircle className="size-12 text-muted-foreground mx-auto opacity-20" />
-                        <p className="text-muted-foreground font-headline font-bold">Comprehensive search returned 0 matches</p>
-                        <p className="text-xs text-muted-foreground uppercase tracking-widest">Verify the username or try different platform selections.</p>
+                        <p className="text-muted-foreground font-headline font-bold">No active profiles identified for "{username}"</p>
                     </div>
                   )}
                 </CardContent>
