@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserSearch, LoaderCircle, CheckCircle, Search, ChevronDown, Check, Info } from "lucide-react";
+import { UserSearch, LoaderCircle, CheckCircle, Search, ChevronDown, Check, Info, ExternalLink } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,10 +25,7 @@ const ALL_PLATFORMS: PlatformKey[] = [
   "Twitch",
   "Facebook",
   "LinkedIn",
-  "Pinterest",
-  "Medium",
   "YouTube",
-  "Quora",
   "Steam"
 ];
 
@@ -87,20 +84,20 @@ export default function UsernameLookupPage() {
     setLoading(false);
   };
   
-  const ResultItem = ({ label, value, isUrl = false }: { label: string, value: string, isUrl?: boolean }) => (
-    <div className="flex items-center gap-2 text-sm py-1.5 group border-b border-border/20 last:border-0">
-      {isUrl ? (
-        <>
-          <CheckCircle className="size-4 text-primary shrink-0" />
-          <strong className="font-mono text-primary/90 shrink-0">{label}:</strong>
-          <a href={value} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate transition-colors">{value}</a>
-        </>
-      ) : (
-        <>
-          <Search className="size-4 text-muted-foreground shrink-0" />
-          <span className="font-mono text-muted-foreground">{value}</span>
-        </>
-      )}
+  const ResultItem = ({ label, value }: { label: string, value: string }) => (
+    <div className="flex items-center justify-between gap-4 text-sm py-2.5 px-3 group bg-background/20 rounded-md border border-border/10 hover:border-primary/30 transition-all hover:bg-primary/5">
+      <div className="flex items-center gap-2 overflow-hidden">
+        <CheckCircle className="size-4 text-primary shrink-0" />
+        <span className="font-mono text-primary/90 font-bold truncate">{label}</span>
+      </div>
+      <a 
+        href={value} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        className="flex items-center gap-1.5 text-accent text-xs font-semibold hover:underline shrink-0"
+      >
+        View Profile <ExternalLink className="size-3" />
+      </a>
     </div>
   )
 
@@ -109,16 +106,16 @@ export default function UsernameLookupPage() {
   return (
     <AppLayout>
       <ToolPageWrapper
-        title="Username Lookup"
-        description="OSINT reconnaissance for social media profiles and online accounts."
+        title="Username Reconnaissance"
+        description="Verify digital signatures across global social and technical registries."
         icon={UserSearch}
       >
         <div className="space-y-8">
           <Card className="border-primary/20 bg-card/40 backdrop-blur-md">
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle className="text-xl font-headline">Target Parameters</CardTitle>
-                <CardDescription>Enter a username or person's name to begin discovery across global networks.</CardDescription>
+                <CardTitle className="text-xl font-headline">Discovery parameters</CardTitle>
+                <CardDescription>Enter a username or person's name to begin deep-web profile identification.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -129,15 +126,15 @@ export default function UsernameLookupPage() {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="e.g., niazahamed"
-                      className="pl-10 h-12 bg-background/50"
+                      className="pl-10 h-12 bg-background/50 border-primary/20 focus:border-primary"
                       aria-label="Username or Name"
                     />
                   </div>
-                  <Button type="submit" disabled={loading || !username} className="h-12 w-full sm:w-auto px-8 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95">
+                  <Button type="submit" disabled={loading || !username} className="h-12 w-full sm:w-auto px-8 shadow-lg shadow-primary/20 transition-all">
                     {loading ? (
                       <LoaderCircle className="animate-spin" />
                     ) : (
-                      <><UserSearch className="mr-2 size-5" /> Investigate</>
+                      <><UserSearch className="mr-2 size-5" /> Execute Search</>
                     )}
                   </Button>
                 </div>
@@ -145,7 +142,7 @@ export default function UsernameLookupPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                     <Collapsible open={isPlatformsOpen} onOpenChange={setIsPlatformsOpen} className="w-full">
                         <CollapsibleTrigger asChild>
-                            <Button variant="outline" className="w-full justify-between h-10 bg-background/30 hover:bg-background/50">
+                            <Button variant="outline" className="w-full justify-between h-10 bg-background/30 hover:bg-background/50 border-border/50">
                                 <span className="flex items-center gap-2">
                                     <Check className="size-4 text-primary" />
                                     Target Platforms ({selectedCount})
@@ -155,8 +152,8 @@ export default function UsernameLookupPage() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="space-y-4 pt-4 px-1 pb-2">
                             <div className="flex items-center justify-end gap-2 mb-2">
-                                <Button variant="ghost" size="xs" onClick={handleSelectAll} className="h-7 text-xs px-2">Select All</Button>
-                                <Button variant="ghost" size="xs" onClick={handleDeselectAll} className="h-7 text-xs px-2">Deselect All</Button>
+                                <Button variant="ghost" size="sm" onClick={handleSelectAll} className="h-7 text-[10px] px-2 uppercase tracking-tighter">Select All</Button>
+                                <Button variant="ghost" size="sm" onClick={handleDeselectAll} className="h-7 text-[10px] px-2 uppercase tracking-tighter">Deselect All</Button>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3 gap-x-4">
                                 {ALL_PLATFORMS.map(platform => (
@@ -199,7 +196,7 @@ export default function UsernameLookupPage() {
                             />
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed uppercase tracking-wider">
-                            {includeDiscovery ? "Enabled: Deep-web discovery active" : "Disabled: Exact variations only"}
+                            {includeDiscovery ? "Enabled: Deep-web discovery active" : "Disabled: Exact matches only"}
                         </p>
                     </Card>
                 </div>
@@ -214,8 +211,8 @@ export default function UsernameLookupPage() {
                 <LoaderCircle className="animate-spin size-12 text-primary absolute top-0 left-0" style={{ animationDuration: '3s' }} />
               </div>
               <div className="text-center space-y-1">
-                <p className="font-headline font-bold text-lg text-primary animate-pulse">Scanning Global Networks</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Intercepting digital signatures...</p>
+                <p className="font-headline font-bold text-lg text-primary animate-pulse">Scanning Global Registries</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-[0.2em]">Filtering false positives...</p>
               </div>
             </div>
           )}
@@ -226,10 +223,10 @@ export default function UsernameLookupPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <CardTitle className="font-headline text-2xl text-primary">Intelligence Report</CardTitle>
-                        <CardDescription className="text-muted-foreground">Results for target identification: <span className="text-accent font-mono">"{username}"</span></CardDescription>
+                        <CardDescription className="text-muted-foreground">Results for: <span className="text-accent font-mono font-bold">"{username}"</span></CardDescription>
                     </div>
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 h-8 px-4">
-                        {Object.values(results).reduce((acc, r) => acc + r.found.length, 0)} Verified Matches
+                        {Object.values(results).reduce((acc, r) => acc + r.found.length, 0)} Verified Identities
                     </Badge>
                 </div>
               </CardHeader>
@@ -244,7 +241,7 @@ export default function UsernameLookupPage() {
                               <span className="font-bold">{platform}</span>
                               <div className="flex gap-2">
                                   {data.found.length > 0 && <Badge className="bg-primary/80 hover:bg-primary">{data.found.length} Matches</Badge>}
-                                  {includeDiscovery && data.discovered.length > 0 && <Badge variant="outline" className="border-accent/40 text-accent bg-accent/5">{data.discovered.length} Discovered</Badge>}
+                                  {includeDiscovery && data.discovered.length > 0 && <Badge variant="outline" className="border-accent/40 text-accent bg-accent/5">{data.discovered.length} Variants</Badge>}
                               </div>
                             </div>
                           </AccordionTrigger>
@@ -253,12 +250,12 @@ export default function UsernameLookupPage() {
                               <div className="space-y-3">
                                 <div className="flex items-center gap-2 mb-2">
                                     <div className="h-px bg-primary/20 flex-grow" />
-                                    <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest px-2">Verified Profiles</h4>
+                                    <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest px-2">Legitimate Profiles</h4>
                                     <div className="h-px bg-primary/20 flex-grow" />
                                 </div>
-                                <div className="grid grid-cols-1 gap-1">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                   {data.found.map(item => (
-                                    <ResultItem key={item.url} label={item.username} value={item.url} isUrl />
+                                    <ResultItem key={item.url} label={item.username} value={item.url} />
                                   ))}
                                 </div>
                               </div>
@@ -267,12 +264,12 @@ export default function UsernameLookupPage() {
                               <div className="space-y-3">
                                  <div className="flex items-center gap-2 mb-2">
                                     <div className="h-px bg-accent/20 flex-grow" />
-                                    <h4 className="text-[10px] font-bold text-accent uppercase tracking-widest px-2">Discovery Variants</h4>
+                                    <h4 className="text-[10px] font-bold text-accent uppercase tracking-widest px-2">Discovered Candidates</h4>
                                     <div className="h-px bg-accent/20 flex-grow" />
                                  </div>
                                  <div className="flex flex-wrap gap-2">
                                     {data.discovered.map(name => (
-                                      <Badge key={name} variant="outline" className="font-mono bg-accent/5 border-accent/20 hover:border-accent/50 transition-colors py-1 cursor-default">{name}</Badge>
+                                      <Badge key={name} variant="outline" className="font-mono bg-accent/5 border-accent/20 py-1">{name}</Badge>
                                     ))}
                                  </div>
                               </div>
@@ -285,8 +282,8 @@ export default function UsernameLookupPage() {
                 ) : (
                   <div className="py-20 text-center space-y-3">
                       <Search className="size-12 text-muted-foreground mx-auto opacity-20" />
-                      <p className="text-muted-foreground font-headline">Zero records identified in global registries.</p>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Attempt broad variations or enable discovery mode.</p>
+                      <p className="text-muted-foreground font-headline">Zero verified records identified.</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Try broader variations or check "Target Platforms" settings.</p>
                   </div>
                 )}
               </CardContent>
