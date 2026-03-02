@@ -5,7 +5,8 @@ import { URL } from 'url';
 
 /**
  * @fileOverview Advanced Username Reconnaissance Engine.
- * Optimized for accuracy and prioritizing exact matches.
+ * Combined logic from CyberTrace TS and User Python Script.
+ * Prioritizes literal matches and uses multi-stage verification.
  */
 
 const PLATFORMS = {
@@ -101,27 +102,36 @@ const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 
 /**
  * Generates smart variations of a seed username.
+ * Integrated patterns from user Python script.
  */
 function generateVariations(seed: string, max_count = 150): string[] {
-    seed = seed.trim().toLowerCase().replace(/\s+/g, '');
+    seed = seed.trim().replace(/\s+/g, '');
     const variants = new Set<string>();
 
-    const prefixes = ["", "real", "the", "its", "iam", "official", "mr", "mrs", "dev", "cyber", "ace", "pro"];
-    const suffixes = ["", "hq", "official", "dev", "cyber", "x", "pro", "007", "123", "01", "app", "me", "live"];
+    // 1. Core variations from User Script
+    variants.add(seed);
+    variants.add(seed.toLowerCase());
+    variants.add(seed.toUpperCase());
+    variants.add(seed + "1");
+    variants.add(seed + "123");
+    variants.add(seed + "_");
+    
+    // 2. Complex combinations
+    const prefixes = ["", "real", "the", "its", "iam", "official", "mr", "mrs", "dev", "cyber"];
+    const suffixes = ["", "hq", "official", "dev", "cyber", "x", "pro", "app", "me", "live"];
     const separators = ["", "_", ".", "-"];
 
-    // Base variations
     for (const p of prefixes) {
         for (const sep of separators) {
             for (const s of suffixes) {
                 const v = `${p}${sep}${seed}${s}`.replace(/^[_.-]+|[_.-]+$/g, "");
-                if (v && v.length >= 2) variants.add(v);
+                if (v && v.length >= 2) variants.add(v.toLowerCase());
             }
         }
     }
 
-    // Numeric variations
-    for (let i = 1; i <= 20; i++) {
+    // 3. Numeric endings
+    for (let i = 2; i <= 20; i++) {
         variants.add(`${seed}${i}`);
         variants.add(`${seed}_${i}`);
     }
@@ -131,6 +141,7 @@ function generateVariations(seed: string, max_count = 150): string[] {
 
 /**
  * Verifies if a username exists on a specific platform using deep inspection.
+ * Integrated 'soft 404' logic from user Python script.
  */
 async function verifyAccountExistence(platformKey: PlatformKey, username: string): Promise<{ username: string; url: string } | null> {
     const platform = PLATFORMS[platformKey];
@@ -144,7 +155,6 @@ async function verifyAccountExistence(platformKey: PlatformKey, username: string
             headers: { 
                 'User-Agent': UA,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
             },
             cache: 'no-store',
             signal: AbortSignal.timeout(10000)
@@ -153,18 +163,22 @@ async function verifyAccountExistence(platformKey: PlatformKey, username: string
         // 404 is definitive
         if (response.status === 404) return null;
 
-        // For others, check body content for "soft 404"
         if (response.ok || response.status === 401 || response.status === 403) {
-            // Treat 401/403 (Unauthorized/Forbidden) as a likely "exists but private" case for some platforms
-            if (response.status === 401 || response.status === 403) {
-                 return { username, url };
-            }
-
             const body = await response.text();
             const lowerBody = body.toLowerCase();
             
+            // Check for platform-specific error markers (Better than generic "not found")
             const hasErrorText = platform.error_text.some(text => lowerBody.includes(text.toLowerCase()));
             if (hasErrorText) return null;
+
+            // Simple "not found" check from User Script as a fallback
+            if (lowerBody.includes("page not found") || lowerBody.includes("not found")) {
+                // Double check if it's a false positive (some sites have "not found" in footer)
+                // If it's a small page or the title contains not found, it's likely a miss
+                if (lowerBody.length < 5000 || lowerBody.includes("<title>page not found")) {
+                    return null;
+                }
+            }
 
             return { username, url };
         }
@@ -188,6 +202,7 @@ async function ddgSearchDiscovery(platformKey: PlatformKey, seed: string): Promi
         const $ = cheerio.load(html);
         const candidates = new Set<string>();
 
+        // Ported from User Script: search for platform links in DuckDuckGo results
         $('a.result__a').each((_, el) => {
             const href = $(el).attr('href');
             if (href) {
@@ -249,18 +264,24 @@ export async function searchUsernames(
         results[p] = { exactMatch: null, found: [], discovered: [] };
     });
 
+    // Integrated logic from User Script:
+    // 1. Literal input first across all platforms
+    // 2. Variations across all platforms
+    // 3. Search Engine Discovery
+
     const tasks = platforms.flatMap(platform => [
-        // 1. Check exact seed first (Highest Priority)
+        // 1. HIGH PRIORITY: Exact Seed Check
         verifyAccountExistence(platform, seed).then(res => {
             if (res) results[platform].exactMatch = { username: res.username, url: res.url };
         }),
-        // 2. Check variations
-        ...variations.map(u => verifyAccountExistence(platform, u).then(res => {
-            if (res && res.username.toLowerCase() !== seed.toLowerCase()) {
-                results[platform].found.push({ username: res.username, url: res.url });
-            }
-        })),
-        // 3. Search Engine Discovery
+        // 2. VARIATIONS CHECK
+        ...variations.map(u => {
+            if (u.toLowerCase() === seed.toLowerCase()) return Promise.resolve();
+            return verifyAccountExistence(platform, u).then(res => {
+                if (res) results[platform].found.push({ username: res.username, url: res.url });
+            });
+        }),
+        // 3. DISCOVERY CHECK
         ...(includeDiscovery ? [ddgSearchDiscovery(platform, seed).then(res => {
             results[platform].discovered = res.filter(d => d.toLowerCase() !== seed.toLowerCase());
         })] : [])
@@ -268,7 +289,7 @@ export async function searchUsernames(
 
     await Promise.allSettled(tasks);
 
-    // Final cleanup to ensure no duplicates and no "exactMatch" duplicates in "found"
+    // Final cleanup: remove duplicates and ensure literal matches aren't in variations
     platforms.forEach(p => {
         const seen = new Set<string>();
         if (results[p].exactMatch) seen.add(results[p].exactMatch!.username.toLowerCase());
