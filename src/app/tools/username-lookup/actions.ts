@@ -2,34 +2,63 @@
 
 /**
  * @fileOverview High-Performance Username Reconnaissance Engine.
- * Strictly implements the user-provided logic:
- * 1. Exact username check via DuckDuckGo scraping.
- * 2. Variation generation (suffixes, delimiter removal).
- * 3. Multi-platform discovery via search engine indexing.
+ * Strictly implements the logic from the user-provided Python script:
+ * - Direct HTTP probing with custom User-Agent.
+ * - HTTP 200 OK verification.
+ * - Title-tag inspection for Steam, Pastebin, and others to filter false positives.
+ * - Multi-platform category grouping.
  */
 
 import * as cheerio from 'cheerio';
 
 const HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
 };
 
-const PLATFORMS = [
-  "instagram.com",
-  "twitter.com",
-  "github.com",
-  "reddit.com",
-  "tiktok.com",
-  "pinterest.com",
-  "youtube.com",
-  "facebook.com",
-  "linkedin.com"
-];
+// Simulated search.yml data structure
+const PLATFORM_GROUPS: Record<string, Record<string, string>> = {
+  "Social": {
+    "Instagram": "https://www.instagram.com/{{username}}/",
+    "Twitter": "https://twitter.com/{{username}}",
+    "Reddit": "https://www.reddit.com/user/{{username}}",
+    "TikTok": "https://www.tiktok.com/@{{username}}",
+    "Pinterest": "https://www.pinterest.com/{{username}}/",
+    "Facebook": "https://www.facebook.com/{{username}}",
+    "Snapchat": "https://www.snapchat.com/add/{{username}}",
+    "Telegram": "https://t.me/{{username}}"
+  },
+  "Tech & Dev": {
+    "GitHub": "https://github.com/{{username}}",
+    "GitLab": "https://gitlab.com/{{username}}",
+    "StackOverflow": "https://stackoverflow.com/users/{{username}}",
+    "Dev.to": "https://dev.to/{{username}}",
+    "DockerHub": "https://hub.docker.com/u/{{username}}",
+    "NPM": "https://www.npmjs.com/~{{username}}",
+    "PyPI": "https://pypi.org/user/{{username}}"
+  },
+  "Gaming": {
+    "Steam": "https://steamcommunity.com/id/{{username}}",
+    "Twitch": "https://www.twitch.tv/{{username}}",
+    "Roblox": "https://www.roblox.com/user.aspx?username={{username}}",
+    "Xbox": "https://www.xboxgamertag.com/search/{{username}}",
+    "Playstation": "https://psnprofiles.com/{{username}}"
+  },
+  "Creative & Other": {
+    "YouTube": "https://www.youtube.com/@{{username}}",
+    "Behance": "https://www.behance.net/{{username}}",
+    "Dribbble": "https://dribbble.com/{{username}}",
+    "Medium": "https://medium.com/@{{username}}",
+    "Patreon": "https://www.patreon.com/{{username}}",
+    "Pastebin": "https://pastebin.com/u/{{username}}"
+  }
+};
 
 export interface UsernameAccount {
-  username_checked: string;
+  platform: string;
   url: string;
-  platform?: string;
+  category: string;
 }
 
 export interface UsernameLookupResponse {
@@ -38,121 +67,103 @@ export interface UsernameLookupResponse {
 }
 
 /**
- * Generates common variations of a username for broader discovery.
+ * Custom logic to verify if a 200 OK response is a real profile.
+ * Implements the Python script's check_200_ok logic.
  */
-function generateVariations(username: string): string[] {
-  return [...new Set([
-    username,
-    username.toLowerCase(),
-    username + "1",
-    username + "123",
-    username.replace(/\./g, ""),
-    username.replace(/_/g, ""),
-    username + "_official"
-  ])];
+function verifyProfileContent(html: string, url: string, siteName: string): boolean {
+  const $ = cheerio.load(html);
+  const title = $("title").text();
+  const lowerSite = siteName.toLowerCase();
+
+  // Python logic: Steam "Error" in title means not found
+  if (lowerSite === 'steam' && title.includes('Error')) {
+    return false;
+  }
+
+  // Python logic: Pastebin default title means not found
+  if (lowerSite === 'pastebin' && title.includes('#1 paste tool since 2002')) {
+    return false;
+  }
+
+  // Generic patterns found in many "Not Found" 200 OK pages
+  const lowerTitle = title.toLowerCase();
+  const falsePatterns = [
+    "page not found",
+    "doesn't exist",
+    "user not found",
+    "404",
+    "not found on"
+  ];
+
+  if (falsePatterns.some(p => lowerTitle.includes(p))) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
- * Scrapes DuckDuckGo HTML results for profile links matching target platforms and username.
+ * Checks a single site for username existence.
  */
-async function searchDuckDuckGo(username: string): Promise<string[]> {
-  const results: string[] = [];
+async function checkSite(site: string, urlTemplate: string, username: string, category: string): Promise<UsernameAccount | null> {
+  const finalUrl = urlTemplate.replace(/{{username}}/g, username);
 
   try {
-    const platformQuery = PLATFORMS.map(p => `site:${p}`).join(" OR ");
-    const query = `"${username}" ${platformQuery}`;
-    const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-
-    const response = await fetch(url, { 
+    const response = await fetch(finalUrl, {
       headers: HEADERS,
+      method: 'GET',
       cache: 'no-store',
-      signal: AbortSignal.timeout(8000)
+      // Python uses 10s timeout
+      signal: AbortSignal.timeout(10000)
     });
 
-    if (!response.ok) return [];
-
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    $("a.result__a").each((_, el) => {
-      const link = $(el).attr("href");
-
-      if (!link) return;
-
-      // Check if the link belongs to one of our target platforms 
-      // AND contains the username (case-insensitive)
-      const isTargetPlatform = PLATFORMS.some(platform => link.includes(platform));
-      const containsUsername = link.toLowerCase().includes(username.toLowerCase());
-
-      if (isTargetPlatform && containsUsername) {
-        results.push(link);
+    if (response.status === 200) {
+      const html = await response.text();
+      if (verifyProfileContent(html, finalUrl, site)) {
+        return {
+          platform: site,
+          url: finalUrl,
+          category
+        };
       }
-    });
-
-  } catch (err: any) {
-    console.error("Search error:", err.message);
+    }
+  } catch (error) {
+    // Timeout or connection error = Not Found
   }
-
-  return [...new Set(results)];
+  return null;
 }
 
 /**
  * Main reconnaissance action.
- * Executes exact match search followed by variations discovery.
+ * Replaces the old DuckDuckGo code with the new multi-threaded direct check.
  */
 export async function searchUsernames(username: string): Promise<UsernameLookupResponse> {
   if (!username) {
     throw new Error("Username is required.");
   }
 
-  const allAccounts: UsernameAccount[] = [];
   const cleanUsername = username.trim();
+  const tasks: Promise<UsernameAccount | null>[] = [];
 
-  // 1️⃣ Exact username first (Highest Priority)
-  const exactResults = await searchDuckDuckGo(cleanUsername);
-  exactResults.forEach(link => {
-    allAccounts.push({
-      username_checked: cleanUsername,
-      url: link,
-      platform: PLATFORMS.find(p => link.includes(p)) || "Unknown"
-    });
-  });
+  // Queue all checks across all categories
+  for (const [category, sites] of Object.entries(PLATFORM_GROUPS)) {
+    for (const [site, urlTemplate] of Object.entries(sites)) {
+      tasks.push(checkSite(site, urlTemplate, cleanUsername, category));
+    }
+  }
 
-  // 2️⃣ Variations Discovery
-  const variations = generateVariations(cleanUsername);
-
-  // Process variations in parallel batches to maintain performance
-  const variantTasks = variations
-    .filter(v => v !== cleanUsername)
-    .map(async (variation) => {
-      const varResults = await searchDuckDuckGo(variation);
-      return varResults.map(link => ({
-        username_checked: variation,
-        url: link,
-        platform: PLATFORMS.find(p => link.includes(p)) || "Unknown"
-      }));
-    });
-
-  const resolvedVariants = await Promise.allSettled(variantTasks);
+  // Execute all probes concurrently (like Python threads)
+  const results = await Promise.allSettled(tasks);
   
-  resolvedVariants.forEach(result => {
-    if (result.status === 'fulfilled') {
-      allAccounts.push(...result.value);
+  const foundAccounts: UsernameAccount[] = [];
+  results.forEach(res => {
+    if (res.status === 'fulfilled' && res.value) {
+      foundAccounts.push(res.value);
     }
   });
-
-  // Deduplicate results based on URL
-  const uniqueAccountsMap = new Map<string, UsernameAccount>();
-  allAccounts.forEach(acc => {
-    if (!uniqueAccountsMap.has(acc.url)) {
-      uniqueAccountsMap.set(acc.url, acc);
-    }
-  });
-
-  const uniqueAccounts = Array.from(uniqueAccountsMap.values());
 
   return {
-    total_found: uniqueAccounts.length,
-    accounts: uniqueAccounts
+    total_found: foundAccounts.length,
+    accounts: foundAccounts
   };
 }

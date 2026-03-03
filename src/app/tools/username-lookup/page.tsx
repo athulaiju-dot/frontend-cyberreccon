@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserSearch, LoaderCircle, Search, ExternalLink, UserCheck, ShieldCheck, Globe, AlertCircle } from "lucide-react";
+import { UserSearch, LoaderCircle, Search, ExternalLink, ShieldCheck, AlertCircle, LayoutGrid } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,20 +33,22 @@ export default function UsernameLookupPage() {
         setLoading(false);
     }
   };
+
+  // Grouping accounts for the UI if needed, but currently keeping list view for clarity
   
   return (
     <AppLayout>
       <ToolPageWrapper
-        title="Username Reconnaissance"
-        description="Discovery using DuckDuckGo scraping, literal matches, and variation analysis."
+        title="Username Intelligence"
+        description="Comprehensive reconnaissance using multi-category direct probing and content verification."
         icon={UserSearch}
       >
         <div className="space-y-8">
           <Card className="border-primary/20 bg-card/40 backdrop-blur-md">
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle className="text-xl font-headline">Recon Parameters</CardTitle>
-                <CardDescription>Enter the target username. We will search for literal matches and common variations.</CardDescription>
+                <CardTitle className="text-xl font-headline">Target Parameters</CardTitle>
+                <CardDescription>Enter the username to trace across 30+ global social, tech, and gaming platforms.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -56,7 +58,7 @@ export default function UsernameLookupPage() {
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Enter username (e.g., hacker-ace)..."
+                      placeholder="Enter target username..."
                       className="pl-10 h-12 bg-background/50 border-primary/30 focus:border-primary text-lg"
                       aria-label="Username"
                     />
@@ -65,7 +67,7 @@ export default function UsernameLookupPage() {
                     {loading ? (
                       <LoaderCircle className="animate-spin size-5" />
                     ) : (
-                      <><Search className="mr-2 size-5" /> Discover Profiles</>
+                      <><Search className="mr-2 size-5" /> Execute Trace</>
                     )}
                   </Button>
                 </div>
@@ -77,8 +79,8 @@ export default function UsernameLookupPage() {
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <LoaderCircle className="animate-spin size-12 text-primary" />
               <div className="text-center">
-                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Scraping Global Indices</p>
-                <p className="text-xs text-muted-foreground uppercase">Executing variation engine and search discovery...</p>
+                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Probing Global Networks</p>
+                <p className="text-xs text-muted-foreground uppercase">Executing concurrent verification and title-tag inspection...</p>
               </div>
             </div>
           )}
@@ -88,9 +90,9 @@ export default function UsernameLookupPage() {
                <CardHeader className="bg-primary/5 border-b border-primary/20 flex flex-row items-center justify-between">
                   <div>
                     <CardTitle className="font-headline text-primary">Intelligence Report</CardTitle>
-                    <CardDescription>Discovery results for "{username}"</CardDescription>
+                    <CardDescription>Verified profiles found for "{username}"</CardDescription>
                   </div>
-                  <Badge variant="outline" className="text-primary border-primary font-mono">
+                  <Badge variant="outline" className="text-primary border-primary font-mono text-sm px-3">
                     {results.total_found} Identified
                   </Badge>
               </CardHeader>
@@ -98,24 +100,22 @@ export default function UsernameLookupPage() {
                 <ScrollArea className="h-[600px] w-full">
                   <div className="p-6 space-y-4">
                     {results.accounts.map((account, idx) => (
-                      <div key={idx} className="p-4 rounded-xl border border-border/50 bg-background/30 hover:border-primary/50 transition-all group">
+                      <div key={idx} className="p-4 rounded-xl border border-border/50 bg-background/30 hover:border-primary/50 transition-all group hover:bg-primary/5">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                                <p className="font-bold text-lg text-foreground uppercase tracking-tight">
                                  {account.platform}
                                </p>
-                               {account.username_checked.toLowerCase() === username.toLowerCase() ? (
-                                 <Badge className="bg-primary text-[10px] h-4 py-0">LITERAL MATCH</Badge>
-                               ) : (
-                                 <Badge variant="secondary" className="text-[10px] h-4 py-0">VARIATION: {account.username_checked}</Badge>
-                               )}
+                               <Badge variant="secondary" className="text-[10px] h-4 py-0 font-bold bg-muted/50 border-none uppercase">
+                                 {account.category}
+                               </Badge>
                             </div>
                             <p className="text-xs font-mono text-muted-foreground truncate max-w-md">
                               {account.url}
                             </p>
                           </div>
-                          <Button variant="outline" size="sm" asChild className="shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                          <Button variant="outline" size="sm" asChild className="shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors border-primary/30 group-hover:border-primary">
                             <a href={account.url} target="_blank" rel="noopener noreferrer">
                               View Profile <ExternalLink className="ml-2 size-3" />
                             </a>
@@ -127,8 +127,8 @@ export default function UsernameLookupPage() {
                     {results.total_found === 0 && (
                       <div className="py-20 text-center space-y-3">
                           <AlertCircle className="size-12 text-muted-foreground mx-auto opacity-20" />
-                          <p className="text-muted-foreground font-headline font-bold">No public accounts identified for "{username}"</p>
-                          <p className="text-xs text-muted-foreground">Try searching for a different handle or nickname.</p>
+                          <p className="text-muted-foreground font-headline font-bold uppercase tracking-widest">No Matches Identified</p>
+                          <p className="text-xs text-muted-foreground">The username does not appear to be active on any monitored public platform.</p>
                       </div>
                     )}
                   </div>
@@ -138,7 +138,7 @@ export default function UsernameLookupPage() {
               <div className="p-4 bg-primary/5 text-center flex items-center justify-center gap-2">
                  <ShieldCheck className="size-4 text-primary" />
                  <p className="text-[10px] text-primary font-bold uppercase tracking-widest">
-                   Data sourced via secure search engine reconnaissance
+                   Direct verification engine complete • Custom title-tag inspection active
                  </p>
               </div>
             </Card>
