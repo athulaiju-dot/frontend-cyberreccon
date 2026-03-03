@@ -2,7 +2,10 @@
 
 /**
  * @fileOverview High-Performance Username Reconnaissance Engine.
- * Implements user-provided logic for content inspection and external discovery.
+ * Strictly implements the user-provided logic:
+ * 1. Exact username check via DuckDuckGo scraping.
+ * 2. Variation generation (suffixes, delimiter removal).
+ * 3. Multi-platform discovery via search engine indexing.
  */
 
 import * as cheerio from 'cheerio';
@@ -11,149 +14,145 @@ const HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 };
 
-const PLATFORMS: Record<string, string> = {
-  Instagram: "https://www.instagram.com/",
-  Twitter: "https://twitter.com/",
-  GitHub: "https://github.com/",
-  Reddit: "https://www.reddit.com/user/",
-  TikTok: "https://www.tiktok.com/@",
-  Pinterest: "https://www.pinterest.com/",
-  YouTube: "https://www.youtube.com/@",
-  Facebook: "https://www.facebook.com/",
-  Medium: "https://medium.com/@/"
-};
-
-const FALSE_PATTERNS = [
-  "not found",
-  "page not found",
-  "doesn’t exist",
-  "doesn't exist",
-  "user not found",
-  "error",
-  "login",
-  "sign up"
+const PLATFORMS = [
+  "instagram.com",
+  "twitter.com",
+  "github.com",
+  "reddit.com",
+  "tiktok.com",
+  "pinterest.com",
+  "youtube.com",
+  "facebook.com",
+  "linkedin.com"
 ];
 
-function isFalsePositive(html: string): boolean {
-  const lower = html.toLowerCase();
-  return FALSE_PATTERNS.some(pattern => lower.includes(pattern));
+export interface UsernameAccount {
+  username_checked: string;
+  url: string;
+  platform?: string;
 }
 
+export interface UsernameLookupResponse {
+  total_found: number;
+  accounts: UsernameAccount[];
+}
+
+/**
+ * Generates common variations of a username for broader discovery.
+ */
 function generateVariations(username: string): string[] {
   return [...new Set([
     username,
     username.toLowerCase(),
     username + "1",
     username + "123",
-    username.replace(".", ""),
-    username.replace("_", ""),
+    username.replace(/\./g, ""),
+    username.replace(/_/g, ""),
     username + "_official"
   ])];
 }
 
-async function checkProfile(url: string): Promise<boolean> {
+/**
+ * Scrapes DuckDuckGo HTML results for profile links matching target platforms and username.
+ */
+async function searchDuckDuckGo(username: string): Promise<string[]> {
+  const results: string[] = [];
+
   try {
+    const platformQuery = PLATFORMS.map(p => `site:${p}`).join(" OR ");
+    const query = `"${username}" ${platformQuery}`;
+    const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+
     const response = await fetch(url, { 
       headers: HEADERS,
       cache: 'no-store',
       signal: AbortSignal.timeout(8000)
     });
 
-    if (response.status === 200) {
-      const html = await response.text();
-      return !isFalsePositive(html);
-    }
-    
-    // Some platforms redirect to login if profile exists but user isn't logged in
-    if (response.status === 301 || response.status === 302) return true;
-
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-async function duckduckgoDiscovery(username: string): Promise<string[]> {
-  const results: string[] = [];
-  try {
-    const query = `"${username}" site:instagram.com OR site:twitter.com OR site:github.com OR site:reddit.com`;
-    const url = `https://duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-
-    const response = await fetch(url, { headers: HEADERS });
     if (!response.ok) return [];
 
     const html = await response.text();
     const $ = cheerio.load(html);
 
-    $("a").each((_, el) => {
+    $("a.result__a").each((_, el) => {
       const link = $(el).attr("href");
-      if (link && link.toLowerCase().includes(username.toLowerCase()) && link.startsWith('http')) {
+
+      if (!link) return;
+
+      // Check if the link belongs to one of our target platforms 
+      // AND contains the username (case-insensitive)
+      const isTargetPlatform = PLATFORMS.some(platform => link.includes(platform));
+      const containsUsername = link.toLowerCase().includes(username.toLowerCase());
+
+      if (isTargetPlatform && containsUsername) {
         results.push(link);
       }
     });
-  } catch (e) {
-    console.error("DDG Discovery failed:", e);
+
+  } catch (err: any) {
+    console.error("Search error:", err.message);
   }
 
-  return [...new Set(results)].slice(0, 10); // Dedupe and limit
+  return [...new Set(results)];
 }
 
-export type UsernameSearchResults = {
-  [platform: string]: {
-    exactMatch: { username: string; url: string } | null;
-    found: { username: string; url: string }[];
-  };
-} & {
-  "External Discovery"?: { found: { username: string; url: string }[] };
-};
+/**
+ * Main reconnaissance action.
+ * Executes exact match search followed by variations discovery.
+ */
+export async function searchUsernames(username: string): Promise<UsernameLookupResponse> {
+  if (!username) {
+    throw new Error("Username is required.");
+  }
 
-export async function searchUsernames(
-  username: string,
-  selectedPlatforms: (keyof typeof PLATFORMS)[]
-): Promise<UsernameSearchResults> {
-  const results: UsernameSearchResults = {};
+  const allAccounts: UsernameAccount[] = [];
   const cleanUsername = username.trim();
 
-  // 1. Exact username check
-  const exactTasks = selectedPlatforms.map(async (platform) => {
-    const baseUrl = PLATFORMS[platform];
-    const profileUrl = baseUrl + cleanUsername;
-    const exists = await checkProfile(profileUrl);
+  // 1️⃣ Exact username first (Highest Priority)
+  const exactResults = await searchDuckDuckGo(cleanUsername);
+  exactResults.forEach(link => {
+    allAccounts.push({
+      username_checked: cleanUsername,
+      url: link,
+      platform: PLATFORMS.find(p => link.includes(p)) || "Unknown"
+    });
+  });
 
-    if (!results[platform]) results[platform] = { exactMatch: null, found: [] };
-    if (exists) {
-      results[platform].exactMatch = { username: cleanUsername, url: profileUrl };
+  // 2️⃣ Variations Discovery
+  const variations = generateVariations(cleanUsername);
+
+  // Process variations in parallel batches to maintain performance
+  const variantTasks = variations
+    .filter(v => v !== cleanUsername)
+    .map(async (variation) => {
+      const varResults = await searchDuckDuckGo(variation);
+      return varResults.map(link => ({
+        username_checked: variation,
+        url: link,
+        platform: PLATFORMS.find(p => link.includes(p)) || "Unknown"
+      }));
+    });
+
+  const resolvedVariants = await Promise.allSettled(variantTasks);
+  
+  resolvedVariants.forEach(result => {
+    if (result.status === 'fulfilled') {
+      allAccounts.push(...result.value);
     }
   });
 
-  await Promise.allSettled(exactTasks);
+  // Deduplicate results based on URL
+  const uniqueAccountsMap = new Map<string, UsernameAccount>();
+  allAccounts.forEach(acc => {
+    if (!uniqueAccountsMap.has(acc.url)) {
+      uniqueAccountsMap.set(acc.url, acc);
+    }
+  });
 
-  // 2. Variations
-  const variations = generateVariations(cleanUsername);
-  const variantTasks = selectedPlatforms.flatMap(platform => 
-    variations
-      .filter(v => v !== cleanUsername)
-      .map(async (variation) => {
-        const baseUrl = PLATFORMS[platform];
-        const profileUrl = baseUrl + variation;
-        const exists = await checkProfile(profileUrl);
+  const uniqueAccounts = Array.from(uniqueAccountsMap.values());
 
-        if (!results[platform]) results[platform] = { exactMatch: null, found: [] };
-        if (exists) {
-          results[platform].found.push({ username: variation, url: profileUrl });
-        }
-      })
-  );
-
-  await Promise.allSettled(variantTasks);
-
-  // 3. DuckDuckGo discovery
-  const ddgLinks = await duckduckgoDiscovery(cleanUsername);
-  if (ddgLinks.length > 0) {
-    results["External Discovery"] = {
-      found: ddgLinks.map(link => ({ username: cleanUsername, url: link }))
-    };
-  }
-
-  return results;
+  return {
+    total_found: uniqueAccounts.length,
+    accounts: uniqueAccounts
+  };
 }

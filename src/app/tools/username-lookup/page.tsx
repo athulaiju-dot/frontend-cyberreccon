@@ -1,37 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { UserSearch, LoaderCircle, Search, ExternalLink, UserCheck, AlertCircle, ShieldCheck, Globe } from "lucide-react";
+import { UserSearch, LoaderCircle, Search, ExternalLink, UserCheck, ShieldCheck, Globe, AlertCircle } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { searchUsernames, type UsernameSearchResults } from "./actions";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { searchUsernames, type UsernameLookupResponse } from "./actions";
 import { AppLayout } from "@/components/layout/AppLayout";
-
-const ALL_PLATFORMS = [
-  "Instagram",
-  "Twitter",
-  "GitHub",
-  "TikTok",
-  "YouTube",
-  "Facebook",
-  "Reddit",
-  "Pinterest",
-  "Medium"
-];
+import { Separator } from "@/components/ui/separator";
 
 export default function UsernameLookupPage() {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<UsernameSearchResults | null>(null);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<Record<string, boolean>>(
-    ALL_PLATFORMS.reduce((acc, p) => ({ ...acc, [p]: true }), {})
-  );
+  const [results, setResults] = useState<UsernameLookupResponse | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,58 +24,21 @@ export default function UsernameLookupPage() {
     setLoading(true);
     setResults(null);
     
-    const activePlatforms = Object.entries(selectedPlatforms)
-        .filter(([,isSelected]) => isSelected)
-        .map(([platform]) => platform);
-
     try {
-        const searchResults = await searchUsernames(username.trim(), activePlatforms);
+        const searchResults = await searchUsernames(username.trim());
         setResults(searchResults);
     } catch(error) {
         console.error("Username reconnaissance failed:", error);
+    } finally {
+        setLoading(false);
     }
-
-    setLoading(false);
   };
   
-  const ResultItem = ({ label, value, isExact }: { label: string, value: string, isExact?: boolean }) => (
-    <div className={`flex items-center justify-between gap-4 text-sm py-3 px-4 rounded-lg border transition-all ${isExact ? 'border-primary bg-primary/10 shadow-lg shadow-primary/10' : 'border-border/50 hover:bg-muted/50'}`}>
-      <div className="flex items-center gap-3 overflow-hidden">
-        {isExact ? (
-           <UserCheck className="size-5 text-primary shrink-0" />
-        ) : (
-          <ShieldCheck className="size-4 text-muted-foreground shrink-0" />
-        )}
-        <div className="flex flex-col truncate">
-           <span className={`font-mono truncate ${isExact ? 'font-bold text-primary text-base' : 'text-muted-foreground'}`}>{label}</span>
-           {isExact && <span className="text-[10px] text-primary font-bold uppercase tracking-wider">Exact Match Found</span>}
-        </div>
-      </div>
-      <a 
-        href={value} 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        className={`flex items-center gap-1.5 font-bold hover:underline shrink-0 ${isExact ? 'text-primary' : 'text-accent'}`}
-      >
-        View Profile <ExternalLink className="size-4" />
-      </a>
-    </div>
-  )
-
-  const totalExactMatches = results ? Object.values(results).filter(r => r && 'exactMatch' in r && r.exactMatch).length : 0;
-  const totalMatches = results ? Object.values(results).reduce((acc, r) => {
-    if (!r) return acc;
-    let count = 0;
-    if ('exactMatch' in r && r.exactMatch) count++;
-    if ('found' in r && r.found) count += r.found.length;
-    return acc + count;
-  }, 0) : 0;
-
   return (
     <AppLayout>
       <ToolPageWrapper
         title="Username Reconnaissance"
-        description="Multi-stage discovery using literal matches, variations, and search engine scraping."
+        description="Discovery using DuckDuckGo scraping, literal matches, and variation analysis."
         icon={UserSearch}
       >
         <div className="space-y-8">
@@ -99,9 +46,9 @@ export default function UsernameLookupPage() {
             <form onSubmit={handleSubmit}>
               <CardHeader>
                 <CardTitle className="text-xl font-headline">Recon Parameters</CardTitle>
-                <CardDescription>Literal input is verified FIRST, followed by common variations and external discovery.</CardDescription>
+                <CardDescription>Enter the target username. We will search for literal matches and common variations.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent>
                 <div className="flex flex-col sm:flex-row items-center gap-4">
                   <div className="relative flex-grow w-full">
                     <UserSearch className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-primary" />
@@ -109,34 +56,18 @@ export default function UsernameLookupPage() {
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Enter username to trace..."
+                      placeholder="Enter username (e.g., hacker-ace)..."
                       className="pl-10 h-12 bg-background/50 border-primary/30 focus:border-primary text-lg"
-                      aria-label="Username or Name"
+                      aria-label="Username"
                     />
                   </div>
                   <Button type="submit" disabled={loading || !username} className="h-12 w-full sm:w-auto px-8 shadow-lg shadow-primary/20">
                     {loading ? (
                       <LoaderCircle className="animate-spin size-5" />
                     ) : (
-                      <><Search className="mr-2 size-5" /> Execute Scan</>
+                      <><Search className="mr-2 size-5" /> Discover Profiles</>
                     )}
                   </Button>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-4 rounded-lg bg-background/30 border border-border/50">
-                    {ALL_PLATFORMS.map(platform => (
-                        <div key={platform} className="flex items-center space-x-2">
-                            <Checkbox
-                                id={platform}
-                                checked={selectedPlatforms[platform]}
-                                onCheckedChange={() => setSelectedPlatforms(prev => ({ ...prev, [platform]: !prev[platform] }))}
-                                className="border-primary data-[state=checked]:bg-primary"
-                            />
-                            <Label htmlFor={platform} className="text-sm font-medium cursor-pointer">
-                                {platform}
-                            </Label>
-                        </div>
-                    ))}
                 </div>
               </CardContent>
             </form>
@@ -146,88 +77,71 @@ export default function UsernameLookupPage() {
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <LoaderCircle className="animate-spin size-12 text-primary" />
               <div className="text-center">
-                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Scanning Network</p>
-                <p className="text-xs text-muted-foreground uppercase">Executing literal verification and DDG discovery for "{username}"...</p>
+                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Scraping Global Indices</p>
+                <p className="text-xs text-muted-foreground uppercase">Executing variation engine and search discovery...</p>
               </div>
             </div>
           )}
 
           {results && (
-            <div className="space-y-6">
-              {/* LITERAL MATCHES */}
-              {totalExactMatches > 0 ? (
-                <Card className="border-primary bg-primary/10 shadow-2xl shadow-primary/10 overflow-hidden ring-1 ring-primary/40">
-                  <CardHeader className="border-b border-primary/20 py-4 bg-primary/10">
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="size-6 text-primary" />
-                      <CardTitle className="text-xl font-headline text-primary">Literal Input Matches</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.entries(results).map(([platform, data]) => (
-                      data && 'exactMatch' in data && data.exactMatch && <ResultItem key={platform} label={`${platform}: ${data.exactMatch.username}`} value={data.exactMatch.url} isExact />
-                    ))}
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="border-destructive/30 bg-destructive/5 overflow-hidden">
-                  <CardHeader className="py-4">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="size-5 text-destructive" />
-                      <CardTitle className="text-lg font-headline text-destructive uppercase">No Literal Match Found</CardTitle>
-                    </div>
-                  </CardHeader>
-                </Card>
-              )}
-
-              {/* DETAILED REPORT SECTION */}
-              <Card className="bg-card/30 backdrop-blur-xl border-border/50 overflow-hidden shadow-2xl">
-                <CardHeader className="bg-muted/30 border-b border-border/50">
-                  <div className="flex items-center justify-between">
-                      <CardTitle className="font-headline text-lg">Discovery Report</CardTitle>
-                      <Badge variant="outline" className="text-primary border-primary">
-                          {totalMatches} Total Identifications
-                      </Badge>
+            <Card className="border-primary/50 shadow-2xl overflow-hidden bg-card/40 backdrop-blur-xl">
+               <CardHeader className="bg-primary/5 border-b border-primary/20 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="font-headline text-primary">Intelligence Report</CardTitle>
+                    <CardDescription>Discovery results for "{username}"</CardDescription>
                   </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {totalMatches > 0 ? (
-                    <Accordion type="multiple" defaultValue={[...ALL_PLATFORMS, "External Discovery"]} className="w-full">
-                      {Object.entries(results).map(([platform, data]) => (
-                        data && (('exactMatch' in data && data.exactMatch) || (data.found && data.found.length > 0)) && (
-                          <AccordionItem value={platform} key={platform} className="border-b border-border/10 last:border-0">
-                            <AccordionTrigger className="px-6 py-4 font-headline text-lg hover:no-underline hover:bg-muted/30 transition-colors">
-                              <div className="flex items-center gap-4">
-                                <span className="font-bold">{platform}</span>
-                                {data && 'exactMatch' in data && data.exactMatch && <Badge className="bg-primary text-[10px]">LITERAL MATCH</Badge>}
-                                {data.found && data.found.length > 0 && <Badge variant="secondary" className="text-[10px]">+{data.found.length} Matches</Badge>}
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="px-6 pt-2 pb-6 space-y-4 bg-background/20">
-                              {data && 'exactMatch' in data && data.exactMatch && (
-                                <ResultItem label={data.exactMatch.username} value={data.exactMatch.url} isExact />
-                              )}
-                              {data.found && data.found.length > 0 && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {data.found.map((item, idx) => (
-                                    <ResultItem key={idx} label={item.username} value={item.url} />
-                                  ))}
-                                </div>
-                              )}
-                            </AccordionContent>
-                          </AccordionItem>
-                        )
-                      ))}
-                    </Accordion>
-                  ) : (
-                    <div className="py-20 text-center space-y-3">
-                        <AlertCircle className="size-12 text-muted-foreground mx-auto opacity-20" />
-                        <p className="text-muted-foreground font-headline font-bold">No active profiles identified for "{username}"</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                  <Badge variant="outline" className="text-primary border-primary font-mono">
+                    {results.total_found} Identified
+                  </Badge>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[600px] w-full">
+                  <div className="p-6 space-y-4">
+                    {results.accounts.map((account, idx) => (
+                      <div key={idx} className="p-4 rounded-xl border border-border/50 bg-background/30 hover:border-primary/50 transition-all group">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                               <p className="font-bold text-lg text-foreground uppercase tracking-tight">
+                                 {account.platform}
+                               </p>
+                               {account.username_checked.toLowerCase() === username.toLowerCase() ? (
+                                 <Badge className="bg-primary text-[10px] h-4 py-0">LITERAL MATCH</Badge>
+                               ) : (
+                                 <Badge variant="secondary" className="text-[10px] h-4 py-0">VARIATION: {account.username_checked}</Badge>
+                               )}
+                            </div>
+                            <p className="text-xs font-mono text-muted-foreground truncate max-w-md">
+                              {account.url}
+                            </p>
+                          </div>
+                          <Button variant="outline" size="sm" asChild className="shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                            <a href={account.url} target="_blank" rel="noopener noreferrer">
+                              View Profile <ExternalLink className="ml-2 size-3" />
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {results.total_found === 0 && (
+                      <div className="py-20 text-center space-y-3">
+                          <AlertCircle className="size-12 text-muted-foreground mx-auto opacity-20" />
+                          <p className="text-muted-foreground font-headline font-bold">No public accounts identified for "{username}"</p>
+                          <p className="text-xs text-muted-foreground">Try searching for a different handle or nickname.</p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+              <Separator className="bg-primary/10" />
+              <div className="p-4 bg-primary/5 text-center flex items-center justify-center gap-2">
+                 <ShieldCheck className="size-4 text-primary" />
+                 <p className="text-[10px] text-primary font-bold uppercase tracking-widest">
+                   Data sourced via secure search engine reconnaissance
+                 </p>
+              </div>
+            </Card>
           )}
         </div>
       </ToolPageWrapper>
