@@ -17,8 +17,8 @@ const HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
-// Simulated search.yml data structure
-const PLATFORM_GROUPS: Record<string, Record<string, string>> = {
+// Exported for UI consumption
+export const PLATFORM_GROUPS: Record<string, Record<string, string>> = {
   "Social": {
     "Instagram": "https://www.instagram.com/{{username}}/",
     "Twitter": "https://twitter.com/{{username}}",
@@ -135,9 +135,9 @@ async function checkSite(site: string, urlTemplate: string, username: string, ca
 
 /**
  * Main reconnaissance action.
- * Replaces the old DuckDuckGo code with the new multi-threaded direct check.
+ * Filtered by selected platforms.
  */
-export async function searchUsernames(username: string): Promise<UsernameLookupResponse> {
+export async function searchUsernames(username: string, selectedPlatforms: string[]): Promise<UsernameLookupResponse> {
   if (!username) {
     throw new Error("Username is required.");
   }
@@ -145,14 +145,16 @@ export async function searchUsernames(username: string): Promise<UsernameLookupR
   const cleanUsername = username.trim();
   const tasks: Promise<UsernameAccount | null>[] = [];
 
-  // Queue all checks across all categories
+  // Queue checks only for selected platforms
   for (const [category, sites] of Object.entries(PLATFORM_GROUPS)) {
     for (const [site, urlTemplate] of Object.entries(sites)) {
-      tasks.push(checkSite(site, urlTemplate, cleanUsername, category));
+      if (selectedPlatforms.includes(site)) {
+        tasks.push(checkSite(site, urlTemplate, cleanUsername, category));
+      }
     }
   }
 
-  // Execute all probes concurrently (like Python threads)
+  // Execute all probes concurrently
   const results = await Promise.allSettled(tasks);
   
   const foundAccounts: UsernameAccount[] = [];
