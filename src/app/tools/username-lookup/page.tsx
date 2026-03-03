@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { UserSearch, LoaderCircle, Search, ExternalLink, ShieldCheck, AlertCircle, CheckCircle2, Circle } from "lucide-react";
+import { UserSearch, LoaderCircle, Search, ExternalLink, ShieldCheck, AlertCircle, LayoutGrid } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { searchUsernames, type UsernameLookupResponse, PLATFORM_GROUPS } from "./actions";
+import { searchUsernames, type UsernameLookupResponse } from "./actions";
+import { PLATFORM_GROUPS } from "./platforms";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Separator } from "@/components/ui/separator";
 
@@ -226,5 +227,3 @@ export default function UsernameLookupPage() {
     </AppLayout>
   );
 }
-
-import { LayoutGrid } from "lucide-react";
