@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserSearch, LoaderCircle, Search, ExternalLink, UserCheck, AlertCircle, ShieldCheck } from "lucide-react";
+import { UserSearch, LoaderCircle, Search, ExternalLink, UserCheck, AlertCircle, ShieldCheck, Globe } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,10 +10,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { searchUsernames, type UsernameSearchResults, type PlatformKey } from "./actions";
+import { searchUsernames, type UsernameSearchResults } from "./actions";
 import { AppLayout } from "@/components/layout/AppLayout";
 
-const ALL_PLATFORMS: PlatformKey[] = [
+const ALL_PLATFORMS = [
   "Instagram",
   "Twitter",
   "GitHub",
@@ -42,7 +42,7 @@ export default function UsernameLookupPage() {
     
     const activePlatforms = Object.entries(selectedPlatforms)
         .filter(([,isSelected]) => isSelected)
-        .map(([platform]) => platform) as PlatformKey[];
+        .map(([platform]) => platform);
 
     try {
         const searchResults = await searchUsernames(username.trim(), activePlatforms);
@@ -78,14 +78,20 @@ export default function UsernameLookupPage() {
     </div>
   )
 
-  const totalExactMatches = results ? Object.values(results).filter(r => r.exactMatch).length : 0;
-  const totalMatches = results ? Object.values(results).reduce((acc, r) => acc + (r.exactMatch ? 1 : 0) + r.found.length, 0) : 0;
+  const totalExactMatches = results ? Object.values(results).filter(r => r && 'exactMatch' in r && r.exactMatch).length : 0;
+  const totalMatches = results ? Object.values(results).reduce((acc, r) => {
+    if (!r) return acc;
+    let count = 0;
+    if ('exactMatch' in r && r.exactMatch) count++;
+    if ('found' in r && r.found) count += r.found.length;
+    return acc + count;
+  }, 0) : 0;
 
   return (
     <AppLayout>
       <ToolPageWrapper
         title="Username Reconnaissance"
-        description="High-priority literal input scanning across global social registries."
+        description="Multi-stage discovery using literal matches, variations, and search engine scraping."
         icon={UserSearch}
       >
         <div className="space-y-8">
@@ -93,7 +99,7 @@ export default function UsernameLookupPage() {
             <form onSubmit={handleSubmit}>
               <CardHeader>
                 <CardTitle className="text-xl font-headline">Recon Parameters</CardTitle>
-                <CardDescription>Your literal input is verified FIRST before any variations.</CardDescription>
+                <CardDescription>Literal input is verified FIRST, followed by common variations and external discovery.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -103,7 +109,7 @@ export default function UsernameLookupPage() {
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Enter exact username..."
+                      placeholder="Enter username to trace..."
                       className="pl-10 h-12 bg-background/50 border-primary/30 focus:border-primary text-lg"
                       aria-label="Username or Name"
                     />
@@ -140,15 +146,15 @@ export default function UsernameLookupPage() {
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <LoaderCircle className="animate-spin size-12 text-primary" />
               <div className="text-center">
-                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Scanning Literal Input</p>
-                <p className="text-xs text-muted-foreground uppercase">Executing server-side bypass for "{username}"...</p>
+                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Scanning Network</p>
+                <p className="text-xs text-muted-foreground uppercase">Executing literal verification and DDG discovery for "{username}"...</p>
               </div>
             </div>
           )}
 
           {results && (
             <div className="space-y-6">
-              {/* LITERAL MATCHES - ABSOLUTE HIGHEST PRIORITY */}
+              {/* LITERAL MATCHES */}
               {totalExactMatches > 0 ? (
                 <Card className="border-primary bg-primary/10 shadow-2xl shadow-primary/10 overflow-hidden ring-1 ring-primary/40">
                   <CardHeader className="border-b border-primary/20 py-4 bg-primary/10">
@@ -159,7 +165,7 @@ export default function UsernameLookupPage() {
                   </CardHeader>
                   <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                     {Object.entries(results).map(([platform, data]) => (
-                      data.exactMatch && <ResultItem key={platform} label={`${platform}: ${data.exactMatch.username}`} value={data.exactMatch.url} isExact />
+                      data && 'exactMatch' in data && data.exactMatch && <ResultItem key={platform} label={`${platform}: ${data.exactMatch.username}`} value={data.exactMatch.url} isExact />
                     ))}
                   </CardContent>
                 </Card>
@@ -180,31 +186,31 @@ export default function UsernameLookupPage() {
                   <div className="flex items-center justify-between">
                       <CardTitle className="font-headline text-lg">Discovery Report</CardTitle>
                       <Badge variant="outline" className="text-primary border-primary">
-                          {totalMatches} Active Profiles
+                          {totalMatches} Total Identifications
                       </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   {totalMatches > 0 ? (
-                    <Accordion type="multiple" defaultValue={ALL_PLATFORMS} className="w-full">
+                    <Accordion type="multiple" defaultValue={[...ALL_PLATFORMS, "External Discovery"]} className="w-full">
                       {Object.entries(results).map(([platform, data]) => (
-                        (data.exactMatch || data.found.length > 0) && (
+                        data && (('exactMatch' in data && data.exactMatch) || (data.found && data.found.length > 0)) && (
                           <AccordionItem value={platform} key={platform} className="border-b border-border/10 last:border-0">
                             <AccordionTrigger className="px-6 py-4 font-headline text-lg hover:no-underline hover:bg-muted/30 transition-colors">
                               <div className="flex items-center gap-4">
                                 <span className="font-bold">{platform}</span>
-                                {data.exactMatch && <Badge className="bg-primary text-[10px]">LITERAL MATCH</Badge>}
-                                {data.found.length > 0 && <Badge variant="secondary" className="text-[10px]">+{data.found.length} Variants</Badge>}
+                                {data && 'exactMatch' in data && data.exactMatch && <Badge className="bg-primary text-[10px]">LITERAL MATCH</Badge>}
+                                {data.found && data.found.length > 0 && <Badge variant="secondary" className="text-[10px]">+{data.found.length} Matches</Badge>}
                               </div>
                             </AccordionTrigger>
                             <AccordionContent className="px-6 pt-2 pb-6 space-y-4 bg-background/20">
-                              {data.exactMatch && (
+                              {data && 'exactMatch' in data && data.exactMatch && (
                                 <ResultItem label={data.exactMatch.username} value={data.exactMatch.url} isExact />
                               )}
-                              {data.found.length > 0 && (
+                              {data.found && data.found.length > 0 && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {data.found.map(item => (
-                                    <ResultItem key={item.url} label={item.username} value={item.url} />
+                                  {data.found.map((item, idx) => (
+                                    <ResultItem key={idx} label={item.username} value={item.url} />
                                   ))}
                                 </div>
                               )}
