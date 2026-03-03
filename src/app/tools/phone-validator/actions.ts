@@ -1,6 +1,8 @@
 'use server';
 
-import { parsePhoneNumberFromString, getCountries } from 'libphonenumber-js';
+import { parsePhoneNumberFromString, getCountries, type PhoneNumber } from 'libphonenumber-js';
+import { ai } from "@/ai/genkit";
+import { z } from "genkit";
 
 export interface PhoneValidationResult {
   input: string;
@@ -13,15 +15,17 @@ export interface PhoneValidationResult {
   countryCode?: string;
   type?: string;
   carrier?: string;
+  location?: string;
+  lineType?: string;
   error?: string;
 }
 
 /**
- * Smart Detection Logic based on your Python script requirements:
- * If no '+' prefix is found, we iterate through all known countries 
- * to find a valid match, simulating the automatic country discovery.
+ * Smart Detection Logic:
+ * Iterates through all global countries to find a valid match for the input string.
+ * This removes the requirement for a '+' prefix or manual country code.
  */
-function attemptSmartParse(phone: string) {
+function attemptSmartParse(phone: string): PhoneNumber | null {
   const cleanPhone = phone.replace(/\D/g, '');
   
   // 1. Try parsing as international (requires +)
@@ -30,19 +34,18 @@ function attemptSmartParse(phone: string) {
     if (parsed) return parsed;
   }
 
-  // 2. Try parsing with a forced + if it looks like an international number
+  // 2. Try parsing with a forced +
   const parsedWithPlus = parsePhoneNumberFromString(`+${cleanPhone}`);
   if (parsedWithPlus?.isValid()) return parsedWithPlus;
 
-  // 3. Iterate through all countries to see if it's a valid national number anywhere
+  // 3. Iterate through all countries
   const countries = getCountries();
   for (const country of countries) {
     const p = parsePhoneNumberFromString(cleanPhone, country);
     if (p?.isValid()) return p;
   }
 
-  // 4. Fallback: try parsing as-is to get partial info
-  return parsePhoneNumberFromString(phone.startsWith('+') ? phone : `+${cleanPhone}`);
+  return null;
 }
 
 export async function validatePhone(phone: string): Promise<PhoneValidationResult> {
@@ -53,34 +56,58 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
   try {
     const phoneNumber = attemptSmartParse(phone);
     
-    if (!phoneNumber) {
-      throw new Error("Could not parse phone number structure.");
+    if (!phoneNumber || !phoneNumber.isValid()) {
+      return { 
+        input: phone, 
+        valid: false,
+        error: "Invalid phone number. Ensure it contains a valid numbering plan for its region." 
+      };
     }
-    
-    const type = phoneNumber.getType();
-    const countryName = phoneNumber.country 
-      ? new Intl.DisplayNames(['en'], { type: 'region' }).of(phoneNumber.country) 
-      : "Not Found";
 
-    // Carrier names are usually the Service Type (Mobile, Fixed Line, etc.)
-    const serviceType = type ? type.replace(/_/g, ' ') : "Not Found";
+    const countryCode = phoneNumber.country;
+    const countryName = countryCode 
+      ? new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode) 
+      : "Unknown";
+
+    // Perform AI-powered OSINT lookup for carrier and location details
+    const intelligence = await ai.generate({
+      prompt: `Analyze this phone number for OSINT purposes:
+      Number: ${phoneNumber.format('E.164')}
+      Detected Country: ${countryName} (${countryCode})
+      
+      Identify the following:
+      1. Carrier/Service Provider Name (e.g., Vodafone, Verizon, Reliance Jio).
+      2. Specific Location/Region/City if identifiable from the area code.
+      3. Line Type (Mobile, Landline, VoIP, Pager).`,
+      output: {
+        schema: z.object({
+          carrier: z.string().describe("The name of the service provider"),
+          location: z.string().describe("The specific geographic region or city"),
+          lineType: z.string().describe("Mobile, Landline, etc.")
+        })
+      }
+    });
+
+    const data = intelligence.output;
 
     return {
       input: phone,
       e164: phoneNumber.format('E.164'),
       international: phoneNumber.format('INTERNATIONAL'),
       national: phoneNumber.format('NATIONAL'),
-      valid: phoneNumber.isValid(),
+      valid: true,
       possible: phoneNumber.isPossible(),
       country: countryName,
-      countryCode: phoneNumber.country,
-      type: serviceType,
-      carrier: serviceType !== "Not Found" ? `${serviceType} Network` : "Not Found",
+      countryCode: countryCode,
+      type: phoneNumber.getType() || 'unknown',
+      carrier: data?.carrier || "Not Found",
+      location: data?.location || "Not Found",
+      lineType: data?.lineType || "Not Found",
     };
   } catch (error: any) {
     return {
       input: phone,
-      error: "Validation failed. Ensure the number is correct.",
+      error: "Intelligence lookup failed. Connection to registry timed out.",
     };
   }
 }
