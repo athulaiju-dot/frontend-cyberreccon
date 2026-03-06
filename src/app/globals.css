@@ -17,8 +17,8 @@ body {
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 90 100% 49%;
-    --primary-foreground: 90 100% 10%;
+    --primary: 142 100% 50%; /* Pure Matrix Green */
+    --primary-foreground: 142 100% 5%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -34,47 +34,47 @@ body {
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 180 100% 50%;
+    --ring: 142 100% 50%;
 
-    --radius: 0.8rem;
+    --radius: 0.5rem;
   }
   .dark {
-    --background: 212 28% 14%;
+    --background: 212 28% 5%;
     --foreground: 210 40% 98%;
 
-    --card: 213 27% 17%;
+    --card: 212 28% 8%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 213 27% 17%;
+    --popover: 212 28% 8%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 90 100% 49%;
-    --primary-foreground: 90 100% 10%;
+    --primary: 142 100% 50%;
+    --primary-foreground: 142 100% 5%;
 
-    --secondary: 212 28% 20%;
+    --secondary: 212 28% 12%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 212 28% 20%;
+    --muted: 212 28% 15%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 180 100% 50%;
-    --accent-foreground: 180 100% 10%;
+    --accent: 142 100% 50%;
+    --accent-foreground: 142 100% 5%;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 212 28% 25%;
-    --input: 212 28% 25%;
-    --ring: 180 100% 50%;
+    --border: 212 28% 15%;
+    --input: 212 28% 15%;
+    --ring: 142 100% 50%;
     
-    --sidebar-background: 212 28% 11%;
+    --sidebar-background: 212 28% 4%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 90 100% 49%;
-    --sidebar-primary-foreground: 90 100% 10%;
-    --sidebar-accent: 180 95% 20%;
-    --sidebar-accent-foreground: 180 100% 80%;
-    --sidebar-border: 212 28% 20%;
-    --sidebar-ring: 180 100% 50%;
+    --sidebar-primary: 142 100% 50%;
+    --sidebar-primary-foreground: 142 100% 5%;
+    --sidebar-accent: 142 95% 10%;
+    --sidebar-accent-foreground: 142 100% 80%;
+    --sidebar-border: 212 28% 12%;
+    --sidebar-ring: 142 100% 50%;
   }
 }
 
@@ -86,4 +86,13 @@ body {
     @apply bg-background text-foreground;
     min-height: 100vh;
   }
+}
+
+@keyframes scan {
+  from { top: -20%; }
+  to { top: 120%; }
+}
+
+.animate-scan {
+  animation: scan 4s linear infinite;
 }
