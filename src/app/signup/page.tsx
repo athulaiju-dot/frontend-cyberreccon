@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label';
 export default function SignupPage() {
   const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would handle user registration here
     alert('Sign up functionality not implemented yet.');
   };
 
@@ -20,7 +19,7 @@ export default function SignupPage() {
         <CardHeader className="text-center">
            <div className="flex justify-center items-center gap-2 mb-4">
              <TerminalSquare className="size-8 text-primary" />
-             <CardTitle className="text-3xl font-bold font-headline text-primary">CyberTrace</CardTitle>
+             <CardTitle className="text-3xl font-bold font-headline text-primary uppercase tracking-tight">CyberRecon</CardTitle>
           </div>
           <CardDescription>Create your account to get started</CardDescription>
         </CardHeader>
@@ -38,13 +37,13 @@ export default function SignupPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" type="password" required />
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full shadow-lg shadow-primary/20">
               <UserPlus className="mr-2" /> Sign Up
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
-            <Link href="/login" className="underline text-accent">
+            <Link href="/login" className="underline text-accent font-semibold">
               Login
             </Link>
           </div>

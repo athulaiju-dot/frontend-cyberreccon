@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'CyberTrace Toolkit',
+  title: 'CyberRecon Toolkit',
   description: 'An OSINT toolkit for digital investigations.',
 };
 

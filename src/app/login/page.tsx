@@ -19,9 +19,8 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    // Simple validation for sample credentials
+    // Credentials requested by user: admin / admin
     if (username === 'admin' && password === 'admin') {
-      // In a real app, you'd set a session/token here
       router.push('/');
     } else {
       setError('Invalid username or password');
@@ -37,11 +36,11 @@ export default function LoginPage() {
       data-ai-hint="team working office"
     >
       <div className="absolute inset-0 bg-background/70" />
-      <Card className="mx-auto max-w-sm w-full z-10 bg-card/80 border-border/50">
+      <Card className="mx-auto max-w-sm w-full z-10 bg-card/80 border-border/50 shadow-2xl">
         <CardHeader className="text-center">
           <div className="flex justify-center items-center gap-2 mb-4">
              <TerminalSquare className="size-8 text-primary" />
-             <CardTitle className="text-3xl font-bold font-headline text-primary">CyberTrace</CardTitle>
+             <CardTitle className="text-3xl font-bold font-headline text-primary uppercase tracking-tight">CyberRecon</CardTitle>
           </div>
           <CardDescription>Enter your credentials to access your toolkit</CardDescription>
         </CardHeader>
@@ -56,6 +55,7 @@ export default function LoginPage() {
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                className="bg-background/50"
               />
             </div>
             <div className="grid gap-2">
@@ -69,16 +69,17 @@ export default function LoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="bg-background/50"
               />
             </div>
-            {error && <p className="text-sm text-destructive text-center">{error}</p>}
-            <Button type="submit" className="w-full">
+            {error && <p className="text-sm text-destructive text-center font-bold animate-pulse">{error}</p>}
+            <Button type="submit" className="w-full shadow-lg shadow-primary/20">
               <LogIn className="mr-2" /> Login
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline text-accent">
+            <Link href="/signup" className="underline text-accent font-semibold">
               Sign up
             </Link>
           </div>
