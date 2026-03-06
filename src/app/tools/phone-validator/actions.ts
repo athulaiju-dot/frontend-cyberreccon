@@ -1,3 +1,4 @@
+
 'use server';
 
 import { parsePhoneNumberFromString, getCountries, type PhoneNumber } from 'libphonenumber-js';
@@ -27,6 +28,7 @@ export interface PhoneValidationResult {
     isActive: boolean;
   };
   error?: string;
+  warnings?: string[];
 }
 
 /**
@@ -65,7 +67,7 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       return { 
         input: phone, 
         valid: false,
-        error: "Invalid phone number structure for its region." 
+        error: "Invalid phone number structure for its region. Please include a country code if possible." 
       };
     }
 
@@ -75,25 +77,53 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       ? new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode) 
       : "Unknown";
 
+    const warnings: string[] = [];
+
     // 1. Basic & AI Intelligence (Carrier/Location)
-    const intelligencePromise = ai.generate({
-      prompt: `Analyze this phone number for OSINT: ${e164} in ${countryName}. Identify Carrier, Specific City/Region, and Line Type.`,
-      output: {
-        schema: z.object({
-          carrier: z.string(),
-          location: z.string(),
-          lineType: z.string()
-        })
-      }
-    });
+    // We wrap this in a separate try/catch so AI failure doesn't kill the whole request
+    let aiData = null;
+    try {
+      const intelligence = await ai.generate({
+        prompt: `Analyze this phone number for OSINT: ${e164} in ${countryName}. Identify Carrier, Specific City/Region, and Line Type.`,
+        output: {
+          schema: z.object({
+            carrier: z.string(),
+            location: z.string(),
+            lineType: z.string()
+          })
+        },
+        config: {
+          // Add a safety timeout to the AI call
+          maxOutputTokens: 200,
+        }
+      });
+      aiData = intelligence.output;
+    } catch (aiErr) {
+      console.error("AI Intelligence failed:", aiErr);
+      warnings.push("Carrier intelligence engine is currently unavailable.");
+    }
 
     // 2. Fraud Intelligence (IPQualityScore)
-    const fraudPromise = fetch(`https://ipqualityscore.com/api/json/phone/${IPQS_KEY}/${e164}`, {
-      next: { revalidate: 3600 }
-    }).then(res => res.json()).catch(() => null);
+    // Wrap in try/catch to handle API timeouts/errors gracefully
+    let ipqsData = null;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for external API
 
-    const [intelligence, ipqsData] = await Promise.all([intelligencePromise, fraudPromise]);
-    const aiData = intelligence.output;
+      const fraudResp = await fetch(`https://ipqualityscore.com/api/json/phone/${IPQS_KEY}/${e164}`, {
+        next: { revalidate: 3600 },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (fraudResp.ok) {
+        ipqsData = await fraudResp.json();
+      }
+    } catch (fraudErr) {
+      console.error("Fraud Intelligence failed:", fraudErr);
+      warnings.push("Fraud registry lookup timed out.");
+    }
 
     return {
       input: phone,
@@ -105,9 +135,10 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       country: countryName,
       countryCode: countryCode,
       type: phoneNumber.getType() || 'unknown',
-      carrier: aiData?.carrier || "Not Found",
+      carrier: aiData?.carrier || "Not Found (Registry Unavailable)",
       location: aiData?.location || "Not Found",
       lineType: aiData?.lineType || "Not Found",
+      warnings: warnings.length > 0 ? warnings : undefined,
       fraudIntel: ipqsData && !ipqsData.errors ? {
         fraudScore: ipqsData.fraud_score || 0,
         isVoip: !!ipqsData.voip,
@@ -117,9 +148,10 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       } : undefined
     };
   } catch (error: any) {
+    console.error("Critical Validation Error:", error);
     return {
       input: phone,
-      error: "Intelligence lookup failed. Connection to registry timed out.",
+      error: "System Error: The reconnaissance engine encountered a critical failure. Please check your network connection and try again.",
     };
   }
 }
