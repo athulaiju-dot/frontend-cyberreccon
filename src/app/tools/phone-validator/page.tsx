@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Phone, LoaderCircle, ShieldCheck, MapPin, Signal, Hash, Info, Building2, Map } from "lucide-react";
+import { Phone, LoaderCircle, ShieldCheck, MapPin, Signal, Building2, Map, AlertTriangle, ShieldAlert, CheckCircle2, XCircle } from "lucide-react";
 import { ToolPageWrapper } from "@/components/ToolPageWrapper";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ResultsDisplay } from "@/components/ResultsDisplay";
 import { validatePhone, type PhoneValidationResult } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 
 export default function PhoneValidatorPage() {
   const [phone, setPhone] = useState("");
@@ -48,18 +48,24 @@ export default function PhoneValidatorPage() {
     }
   };
 
+  const getFraudColor = (score: number) => {
+    if (score >= 75) return "text-destructive";
+    if (score >= 40) return "text-yellow-500";
+    return "text-primary";
+  };
+
   return (
     <AppLayout>
       <ToolPageWrapper
         title="Phone Intelligence"
-        description="Automatic country detection, carrier identification, and location tracing."
+        description="Global reconnaissance combining carrier identification with IPQS fraud analytics."
         icon={Phone}
       >
         <div className="space-y-8">
           <Card className="border-primary/20 bg-card/40 backdrop-blur-md">
             <CardHeader>
               <CardTitle className="text-xl font-headline">Phone Reconnaissance</CardTitle>
-              <CardDescription>Enter any number. The system will automatically identify the origin and carrier.</CardDescription>
+              <CardDescription>Enter any number. The system automatically performs registry probes and fraud assessment.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-4">
@@ -69,7 +75,7 @@ export default function PhoneValidatorPage() {
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. 919876543210 (No + required)"
+                    placeholder="e.g. 919876543210"
                     className="pl-10 h-12 bg-background/50 border-primary/30 focus:border-primary text-lg font-mono"
                   />
                 </div>
@@ -88,77 +94,116 @@ export default function PhoneValidatorPage() {
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <LoaderCircle className="animate-spin size-12 text-primary" />
               <div className="text-center">
-                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest">Triangulating Carrier</p>
-                <p className="text-xs text-muted-foreground uppercase">Analyzing global numbering plans and local registries...</p>
+                <p className="font-headline font-bold text-lg text-primary uppercase tracking-widest text-glow">Probing Global Networks</p>
+                <p className="text-xs text-muted-foreground uppercase">Querying IPQualityScore and carrier registries...</p>
               </div>
             </div>
           )}
 
           {results && (
-            <Card className={`border-primary/50 shadow-2xl overflow-hidden ${!results.valid ? 'border-destructive/50' : ''}`}>
-              <CardHeader className="bg-primary/5 border-b border-primary/20 flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="font-headline text-primary">Intelligence Report</CardTitle>
-                  <CardDescription>Verified details for {results.international}</CardDescription>
-                </div>
-                <Badge variant={results.valid ? "default" : "destructive"} className="uppercase">
-                  {results.valid ? "Active / Valid" : "Invalid Number"}
-                </Badge>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
-                      <MapPin className="size-3" /> Country
-                    </p>
-                    <p className="text-lg font-semibold">{results.country}</p>
+            <div className="grid grid-cols-1 gap-6">
+              {/* PRIMARY INTEL */}
+              <Card className={`border-primary/50 shadow-2xl overflow-hidden ${!results.valid ? 'border-destructive/50' : ''}`}>
+                <CardHeader className="bg-primary/5 border-b border-primary/20 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="font-headline text-primary">Intelligence Report</CardTitle>
+                    <CardDescription>Target: {results.international}</CardDescription>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
-                      <Building2 className="size-3" /> Carrier
-                    </p>
-                    <p className="text-lg font-semibold text-primary">{results.carrier}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
-                      <Map className="size-3" /> Location
-                    </p>
-                    <p className="text-lg font-semibold">{results.location}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
-                      <Signal className="size-3" /> Line Type
-                    </p>
-                    <p className="text-lg font-semibold capitalize">{results.lineType}</p>
-                  </div>
-                </div>
-
-                <Separator className="bg-border/50" />
-
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm font-bold uppercase text-muted-foreground">
-                    <Info className="size-4" /> Structural Analysis
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-1">
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">International Format</p>
-                        <p className="font-mono text-primary">{results.international}</p>
+                  <Badge variant={results.valid ? "default" : "destructive"} className="uppercase">
+                    {results.valid ? "Active / Valid" : "Invalid Structure"}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="pt-6 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+                        <MapPin className="size-3" /> Country
+                      </p>
+                      <p className="text-lg font-semibold">{results.country}</p>
                     </div>
-                    <div className="p-4 rounded-lg bg-muted/30 border border-border/50 space-y-1">
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">E.164 Standard</p>
-                        <p className="font-mono text-primary">{results.e164}</p>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+                        <Building2 className="size-3" /> Carrier
+                      </p>
+                      <p className="text-lg font-semibold text-primary">{results.carrier}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+                        <Map className="size-3" /> Location
+                      </p>
+                      <p className="text-lg font-semibold">{results.location}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+                        <Signal className="size-3" /> Line Type
+                      </p>
+                      <p className="text-lg font-semibold capitalize">{results.lineType}</p>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-              {!results.valid && (
-                <CardFooter className="bg-destructive/5 border-t border-destructive/20 p-4">
-                  <p className="text-xs text-destructive font-bold uppercase text-center w-full">
-                    Warning: Number structure not recognized by any global registry.
-                  </p>
-                </CardFooter>
+                </CardContent>
+              </Card>
+
+              {/* FRAUD INTELLIGENCE */}
+              {results.fraudIntel && (
+                <Card className="border-accent/50 bg-accent/5 overflow-hidden">
+                  <CardHeader className="border-b border-accent/20">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="size-5 text-accent" />
+                      <CardTitle className="text-lg font-headline text-accent">Fraud Intelligence (IPQS)</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-end">
+                           <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Fraud Risk Score</p>
+                           <p className={`text-3xl font-bold font-mono ${getFraudColor(results.fraudIntel.fraudScore)}`}>
+                             {results.fraudIntel.fraudScore}/100
+                           </p>
+                        </div>
+                        <Progress value={results.fraudIntel.fraudScore} className="h-2" />
+                        <p className="text-[10px] text-muted-foreground leading-tight">
+                          A high fraud score indicates that the number is associated with suspicious activity or high-risk numbering plans.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="p-3 rounded-lg border border-accent/20 bg-background/50 flex flex-col items-center justify-center text-center">
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">VOIP Detection</p>
+                            {results.fraudIntel.isVoip ? (
+                              <Badge variant="destructive" className="h-5">VOIP ACTIVE</Badge>
+                            ) : (
+                              <Badge variant="default" className="h-5 bg-primary/20 text-primary border-primary">NON-VOIP</Badge>
+                            )}
+                         </div>
+                         <div className="p-3 rounded-lg border border-accent/20 bg-background/50 flex flex-col items-center justify-center text-center">
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Recent Abuse</p>
+                            {results.fraudIntel.recentAbuse ? (
+                              <AlertTriangle className="size-5 text-destructive" />
+                            ) : (
+                              <CheckCircle2 className="size-5 text-primary" />
+                            )}
+                         </div>
+                         <div className="p-3 rounded-lg border border-accent/20 bg-background/50 flex flex-col items-center justify-center text-center">
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Risk Status</p>
+                            <span className={`text-xs font-bold ${results.fraudIntel.isRisky ? 'text-destructive' : 'text-primary'}`}>
+                                {results.fraudIntel.isRisky ? 'HIGH RISK' : 'LOW RISK'}
+                            </span>
+                         </div>
+                         <div className="p-3 rounded-lg border border-accent/20 bg-background/50 flex flex-col items-center justify-center text-center">
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Active Status</p>
+                            {results.fraudIntel.isActive ? (
+                               <Badge variant="outline" className="text-primary border-primary h-5">VERIFIED ACTIVE</Badge>
+                            ) : (
+                               <Badge variant="outline" className="text-muted-foreground h-5">UNKNOWN/INACTIVE</Badge>
+                            )}
+                         </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
-            </Card>
+            </div>
           )}
         </div>
       </ToolPageWrapper>

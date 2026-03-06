@@ -4,6 +4,8 @@ import { parsePhoneNumberFromString, getCountries, type PhoneNumber } from 'libp
 import { ai } from "@/ai/genkit";
 import { z } from "genkit";
 
+const IPQS_KEY = "ejnzUUIslZkSC0JoiHC5apVa8OGcUVHE";
+
 export interface PhoneValidationResult {
   input: string;
   e164?: string;
@@ -17,28 +19,31 @@ export interface PhoneValidationResult {
   carrier?: string;
   location?: string;
   lineType?: string;
+  fraudIntel?: {
+    fraudScore: number;
+    isVoip: boolean;
+    recentAbuse: boolean;
+    isRisky: boolean;
+    isActive: boolean;
+  };
   error?: string;
 }
 
 /**
  * Smart Detection Logic:
  * Iterates through all global countries to find a valid match for the input string.
- * This removes the requirement for a '+' prefix or manual country code.
  */
 function attemptSmartParse(phone: string): PhoneNumber | null {
   const cleanPhone = phone.replace(/\D/g, '');
   
-  // 1. Try parsing as international (requires +)
   if (phone.startsWith('+')) {
     const parsed = parsePhoneNumberFromString(phone);
     if (parsed) return parsed;
   }
 
-  // 2. Try parsing with a forced +
   const parsedWithPlus = parsePhoneNumberFromString(`+${cleanPhone}`);
   if (parsedWithPlus?.isValid()) return parsedWithPlus;
 
-  // 3. Iterate through all countries
   const countries = getCountries();
   for (const country of countries) {
     const p = parsePhoneNumberFromString(cleanPhone, country);
@@ -60,39 +65,39 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       return { 
         input: phone, 
         valid: false,
-        error: "Invalid phone number. Ensure it contains a valid numbering plan for its region." 
+        error: "Invalid phone number structure for its region." 
       };
     }
 
+    const e164 = phoneNumber.format('E.164');
     const countryCode = phoneNumber.country;
     const countryName = countryCode 
       ? new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode) 
       : "Unknown";
 
-    // Perform AI-powered OSINT lookup for carrier and location details
-    const intelligence = await ai.generate({
-      prompt: `Analyze this phone number for OSINT purposes:
-      Number: ${phoneNumber.format('E.164')}
-      Detected Country: ${countryName} (${countryCode})
-      
-      Identify the following:
-      1. Carrier/Service Provider Name (e.g., Vodafone, Verizon, Reliance Jio).
-      2. Specific Location/Region/City if identifiable from the area code.
-      3. Line Type (Mobile, Landline, VoIP, Pager).`,
+    // 1. Basic & AI Intelligence (Carrier/Location)
+    const intelligencePromise = ai.generate({
+      prompt: `Analyze this phone number for OSINT: ${e164} in ${countryName}. Identify Carrier, Specific City/Region, and Line Type.`,
       output: {
         schema: z.object({
-          carrier: z.string().describe("The name of the service provider"),
-          location: z.string().describe("The specific geographic region or city"),
-          lineType: z.string().describe("Mobile, Landline, etc.")
+          carrier: z.string(),
+          location: z.string(),
+          lineType: z.string()
         })
       }
     });
 
-    const data = intelligence.output;
+    // 2. Fraud Intelligence (IPQualityScore)
+    const fraudPromise = fetch(`https://ipqualityscore.com/api/json/phone/${IPQS_KEY}/${e164}`, {
+      next: { revalidate: 3600 }
+    }).then(res => res.json()).catch(() => null);
+
+    const [intelligence, ipqsData] = await Promise.all([intelligencePromise, fraudPromise]);
+    const aiData = intelligence.output;
 
     return {
       input: phone,
-      e164: phoneNumber.format('E.164'),
+      e164,
       international: phoneNumber.format('INTERNATIONAL'),
       national: phoneNumber.format('NATIONAL'),
       valid: true,
@@ -100,9 +105,16 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       country: countryName,
       countryCode: countryCode,
       type: phoneNumber.getType() || 'unknown',
-      carrier: data?.carrier || "Not Found",
-      location: data?.location || "Not Found",
-      lineType: data?.lineType || "Not Found",
+      carrier: aiData?.carrier || "Not Found",
+      location: aiData?.location || "Not Found",
+      lineType: aiData?.lineType || "Not Found",
+      fraudIntel: ipqsData && !ipqsData.errors ? {
+        fraudScore: ipqsData.fraud_score || 0,
+        isVoip: !!ipqsData.voip,
+        recentAbuse: !!ipqsData.recent_abuse,
+        isRisky: !!ipqsData.risky,
+        isActive: !!ipqsData.active
+      } : undefined
     };
   } catch (error: any) {
     return {
