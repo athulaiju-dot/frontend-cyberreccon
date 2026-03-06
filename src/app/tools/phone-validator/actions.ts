@@ -67,7 +67,7 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       return { 
         input: phone, 
         valid: false,
-        error: "Invalid phone number structure for its region. Please include a country code if possible." 
+        error: "Invalid phone number structure. Please include a country code (e.g. 91 for India)." 
       };
     }
 
@@ -78,44 +78,48 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       : "Unknown";
 
     const warnings: string[] = [];
+    const lineType = phoneNumber.getType() || 'unknown';
 
-    // 1. Basic & AI Intelligence (Carrier/Location)
-    // We wrap this in a separate try/catch so AI failure doesn't kill the whole request
-    let aiData = null;
+    // 1. AI Reconnaissance (Carrier & Specific Location)
+    let aiData = { carrier: "Scanning...", location: "Scanning..." };
     try {
-      const intelligence = await ai.generate({
-        prompt: `Analyze this phone number for OSINT: ${e164} in ${countryName}. Identify Carrier, Specific City/Region, and Line Type.`,
+      const response = await ai.generate({
+        prompt: `You are an OSINT expert. Analyze this phone number: ${e164} (Country: ${countryName}, Registry Type: ${lineType}). 
+        Task: 
+        1. Identify the specific Carrier/Service Provider (e.g. Reliance Jio, Verizon, Vodafone).
+        2. Identify the likely city or administrative region based on the prefix.
+        
+        Return the data in a clear JSON format.`,
         output: {
           schema: z.object({
-            carrier: z.string(),
-            location: z.string(),
-            lineType: z.string()
+            carrier: z.string().describe("Full name of the mobile/landline carrier"),
+            location: z.string().describe("Likely city or region name")
           })
         },
         config: {
-          // Add a safety timeout to the AI call
-          maxOutputTokens: 200,
+          maxOutputTokens: 250,
+          // Set a reasonably short timeout for the AI call
+          // @ts-ignore - Genkit config types can be strict
+          timeoutMillis: 10000 
         }
       });
-      aiData = intelligence.output;
+      
+      if (response.output) {
+        aiData = response.output;
+      }
     } catch (aiErr) {
       console.error("AI Intelligence failed:", aiErr);
-      warnings.push("Carrier intelligence engine is currently unavailable.");
+      warnings.push("Carrier intelligence engine is busy. Basic registry data shown.");
+      aiData = { carrier: "Registry Locked", location: countryName };
     }
 
     // 2. Fraud Intelligence (IPQualityScore)
-    // Wrap in try/catch to handle API timeouts/errors gracefully
     let ipqsData = null;
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout for external API
-
       const fraudResp = await fetch(`https://ipqualityscore.com/api/json/phone/${IPQS_KEY}/${e164}`, {
         next: { revalidate: 3600 },
-        signal: controller.signal
+        signal: AbortSignal.timeout(8000)
       });
-      
-      clearTimeout(timeoutId);
       
       if (fraudResp.ok) {
         ipqsData = await fraudResp.json();
@@ -134,10 +138,10 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
       possible: phoneNumber.isPossible(),
       country: countryName,
       countryCode: countryCode,
-      type: phoneNumber.getType() || 'unknown',
-      carrier: aiData?.carrier || "Not Found (Registry Unavailable)",
-      location: aiData?.location || "Not Found",
-      lineType: aiData?.lineType || "Not Found",
+      type: lineType,
+      carrier: aiData.carrier,
+      location: aiData.location,
+      lineType: lineType,
       warnings: warnings.length > 0 ? warnings : undefined,
       fraudIntel: ipqsData && !ipqsData.errors ? {
         fraudScore: ipqsData.fraud_score || 0,
@@ -151,7 +155,7 @@ export async function validatePhone(phone: string): Promise<PhoneValidationResul
     console.error("Critical Validation Error:", error);
     return {
       input: phone,
-      error: "System Error: The reconnaissance engine encountered a critical failure. Please check your network connection and try again.",
+      error: "System Error: The reconnaissance engine encountered a critical failure. Please check your network connection.",
     };
   }
 }
