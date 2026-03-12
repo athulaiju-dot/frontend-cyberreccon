@@ -2,37 +2,32 @@
 
 An advanced OSINT (Open Source Intelligence) platform built with Next.js, Tailwind CSS, and Genkit.
 
-## 🚀 Features
-- **Username Intelligence**: Multi-platform profile discovery with specialized validation (Steam, Pastebin, etc.).
-- **Phone Reconnaissance**: Carrier identification and IPQS fraud analytics.
-- **Visual Intelligence**: Image hashing and reverse search using Gemini Vision.
-- **Network Discovery**: IP/Domain geolocation and subdomain enumeration.
-- **Security Probes**: Clickjacking and Host Header vulnerability testing.
+## 🚀 Deployment to GitHub
+
+To push this project to your specific repository, open your terminal in the project folder and run these exact commands:
+
+```bash
+# 1. Initialize git
+git init
+
+# 2. Add your specific remote repository
+git remote add origin https://github.com/niazahamed004-wq/cybertrace.git
+
+# 3. Stage all project files
+git add .
+
+# 4. Create your initial commit
+git commit -m "Initial CyberRecon commit"
+
+# 5. Push to the main branch
+git push -u origin main
+```
 
 ## 📦 How to get the code
 1. **Download**: Click the **Download** icon (cloud with downward arrow) in the **top toolbar** of the Firebase Studio interface to get the project as a ZIP file.
-2. **GitHub**: Follow the deployment steps below to host it on your own GitHub account.
-
-## 🛠️ Deployment to GitHub
-
-To push this project to your repository and share it with friends, run these commands in your local terminal:
-
-```bash
-# Initialize git
-git init
-
-# Add your remote repository
-git remote add origin https://github.com/niazahamed004-wq/cybertrace.git
-
-# Stage all files
-git add .
-
-# Create initial commit
-git commit -m "Initial CyberRecon commit"
-
-# Push to main branch
-git push -u origin main
-```
+2. **Extract**: Unzip the file on your local machine.
+3. **Terminal**: Open your terminal (Command Prompt, Terminal, or PowerShell) inside the extracted folder.
+4. **Push**: Execute the 5 commands listed above.
 
 ## 🤝 Sharing & Collaboration
 When sharing this project with others:
