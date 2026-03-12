@@ -10,7 +10,7 @@ An advanced OSINT (Open Source Intelligence) platform built with Next.js, Tailwi
 - **Security Probes**: Clickjacking and Host Header vulnerability testing.
 
 ## 📦 How to get the code
-1. **Download**: Click the **Download** icon in the Firebase Studio toolbar to get the project as a ZIP file.
+1. **Download**: Click the **Download** icon (cloud with downward arrow) in the **top toolbar** of the Firebase Studio interface to get the project as a ZIP file.
 2. **GitHub**: Follow the deployment steps below to host it on your own GitHub account.
 
 ## 🛠️ Deployment to GitHub
