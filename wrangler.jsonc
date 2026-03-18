@@ -1,13 +1,15 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "frontend-cyberreccon",
+  "main": ".open-next/worker.js",
   "compatibility_date": "2025-09-27",
   "compatibility_flags": ["nodejs_compat"],
 
-  "services": [
-    {
-      "binding": "WORKER_SELF_REFERENCE",
-      "service": "frontend-cyberreccon"
-    }
-  ]
+  "build": {
+    "command": "npx opennextjs-cloudflare build"
+  },
+
+  "assets": {
+    "directory": ".open-next/assets"
+  }
 }
